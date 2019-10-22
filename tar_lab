@@ -1,0 +1,15 @@
+#!/bin/bash
+
+rm -rf dr589_jaj263_zl242
+rm dr589_jaj263_zl242.tar
+mkdir -p dr589_jaj263_zl242
+cp -R src dr589_jaj263_zl242/
+cp -R tests dr589_jaj263_zl242/
+cp build dr589_jaj263_zl242/
+cp fullstopall dr589_jaj263_zl242/
+cp stopall dr589_jaj263_zl242/
+cp requirements.md dr589_jaj263_zl242/
+cp README.md dr589_jaj263_zl242/
+cp process dr589_jaj263_zl242/
+tar -cf dr589_jaj263_zl242.tar dr589_jaj263_zl242
+tar -tf dr589_jaj263_zl242.tar

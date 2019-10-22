@@ -1,0 +1,11 @@
+#!/bin/bash
+
+cp master.py dr589_jaj263_zl242/
+cp test.py dr589_jaj263_zl242/
+cd dr589_jaj263_zl242/
+python test.py
+cd ..
+rm -rf dr589_jaj263_zl242/test_output
+rm dr589_jaj263_zl242/master.py
+rm dr589_jaj263_zl242/test.py
+rm -rf dr589_jaj263_zl242/bin

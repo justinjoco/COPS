@@ -1,0 +1,6 @@
+#!/bin/bash
+
+#INSERT LAB SPECIFIC STOP IMPLEMENTATIONS HERE
+
+#Stops all Go processes
+./fullstopall

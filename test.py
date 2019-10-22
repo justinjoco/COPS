@@ -39,6 +39,6 @@ for f in os.listdir(tests):
             time.sleep(2)
 
 if num_pass == num_tests:
-    print("All tests pass!")
+    print("SUCCESS: All tests pass!")
 else:
-    print("At least one test failed!")
+    print("FAIL: At least one test failed!")
