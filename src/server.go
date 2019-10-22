@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net"
-//	"os"
 	"bufio"
 	"strings"
 	"time"
@@ -14,9 +13,8 @@ import (
 type Server struct{
 	pid string
 	peers []string
-	masterPort string
-	peerPort string
-	broadcastMode bool
+	masterFacingPort string
+	peerFacingPort string
 	alive []string 
 	messages [] string
 
@@ -25,29 +23,26 @@ type Server struct{
 const(
 	CONNECT_HOST = "localhost"
 	CONNECT_TYPE = "tcp"
-
 )
 
 
-func (self *Server) run(){
+func (self *Server) Run(){
 
-	lMaster, error := net.Listen(CONNECT_TYPE, CONNECT_HOST + ":" + self.masterPort)
-	lPeer, error := net.Listen(CONNECT_TYPE, CONNECT_HOST + ":" + self.peerPort)
+	lMaster, error := net.Listen(CONNECT_TYPE, CONNECT_HOST + ":" + self.masterFacingPort)
+	lPeer, error := net.Listen(CONNECT_TYPE, CONNECT_HOST + ":" + self.peerFacingPort)
 
 	if error !=nil{
 		fmt.Println("Error listening!")
 	}
 
-	go self.sendPeers(false, "ping")
-	go self.receivePeers(lPeer)
-	self.handleMaster(lMaster)
-
-
+	go self.Heartbeat(false, "ping")
+	go self.ReceivePeers(lPeer)
+	self.HandleMaster(lMaster)
 
 }
 
 
-func (self *Server) handleMaster(lMaster net.Listener){
+func (self *Server) HandleMaster(lMaster net.Listener){
 	defer lMaster.Close()
 
 	connMaster, error := lMaster.Accept()
@@ -64,49 +59,43 @@ func (self *Server) handleMaster(lMaster net.Listener){
 		message, _ := reader.ReadString('\n')
 
 		message = strings.TrimSuffix(message, "\n")
-		
-		
+		messageSlice := strings.Split(message, " ")
+		command := messageSlice[0]
+
 		retMessage := ""
 	 	removeComma := 0
-		if message == "alive"{
-		 	retMessage += "alive "
-		 	for _, port := range self.alive{
-		 		retMessage += port + ","
-		 		removeComma = 1
-		 	}
+	 	switch command {
+			case "alive":
+			 	retMessage += "alive "
+			 	for _, port := range self.alive{
+			 		retMessage += port + ","
+			 		removeComma = 1
+			 	}
+			 	retMessage = retMessage[0:len(retMessage) - removeComma]
+			 	lenStr := strconv.Itoa(len(retMessage))
+			 	retMessage = lenStr + "-" + retMessage
 
-		 	retMessage = retMessage[0:len(retMessage) - removeComma]
-		 	lenStr := strconv.Itoa(len(retMessage))
+			 case "get":
+			 	retMessage += "messages "
+		 		for _, message := range self.messages{
+		 			retMessage += message + ","
+		 			removeComma = 1
+		 		}
+		 		retMessage = retMessage[0:len(retMessage) - removeComma]
+			 	lenStr := strconv.Itoa(len(retMessage))
+			 	retMessage = lenStr + "-" + retMessage
 
-		 	retMessage = lenStr + "-" + retMessage
-
-		 } else if message == "get"{
-		 	retMessage += "messages "
-	 		for _, message := range self.messages{
-	 			retMessage += message + ","
-	 			removeComma = 1
-	 		}
-
-	 		retMessage = retMessage[0:len(retMessage) - removeComma]
-		 	lenStr := strconv.Itoa(len(retMessage))
-
-		 	retMessage = lenStr + "-" + retMessage
-
-		 
-		 }else{
-			
-			broadcastMessage := after(message, "broadcast ")
-			if broadcastMessage != ""{ 
-				self.messages = append(self.messages, broadcastMessage)
-				self.sendPeers(true, broadcastMessage)
-			}else{
-				retMessage += "Invalid command. Use 'get', 'alive', or 'broadcast <message>'"
-			}
+			 default:	
+				broadcastMessage := messageSlice[1]
+				if broadcastMessage != ""{ 
+					self.messages = append(self.messages, broadcastMessage)
+					self.Heartbeat(true, broadcastMessage)
+				}else{
+					retMessage += "Invalid command. Use 'get', 'alive', or 'broadcast <message>'"
+				}
 		}
 
 		connMaster.Write([]byte(retMessage))
-	
-
 	
 	}
 
@@ -116,7 +105,7 @@ func (self *Server) handleMaster(lMaster net.Listener){
 }
 
 
-func (self *Server) receivePeers(lPeer net.Listener){
+func (self *Server) ReceivePeers(lPeer net.Listener){
 	defer lPeer.Close()
 	
 	
@@ -136,24 +125,22 @@ func (self *Server) receivePeers(lPeer net.Listener){
 		 	self.messages = append(self.messages, message)
 		 }
 		 connPeer.Close()
-		 
-		 
+		
 	}
 
 	
 }
 
 
-func (self *Server) sendPeers(broadcastMode bool, message string){
+func (self *Server) Heartbeat(broadcastMode bool, message string){
 
 	for {
 
-		
-		var tempAlive []string
+		tempAlive := make([]string, 0)
 		
 		for _, otherPort := range self.peers{
 
-			if otherPort != self.peerPort{
+			if otherPort != self.peerFacingPort{
 				peerConn, err := net.Dial("tcp", "127.0.0.1:" + otherPort)
 			    if err != nil {
 			        continue
@@ -181,16 +168,4 @@ func (self *Server) sendPeers(broadcastMode bool, message string){
 
 }
 
-
-func after(input string, target string) string{
-	pos := strings.LastIndex(input, target)
-	if pos == -1 {
-		return ""
-	}
-	adjustedPos := pos + len(target)
-	if adjustedPos >= len(input) {
-		return ""
-	}
-	return input[adjustedPos:len(input)]
-}
 

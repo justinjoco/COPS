@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"strconv"
-	//"fmt"
 )
 
 
@@ -14,10 +13,10 @@ func main(){
 
 	serverId := args[0]
 	n, _ := strconv.Atoi(args[1])
-	masterPort :=  args[2]
+	masterFacingPort :=  args[2]
 	id_num, _ := strconv.Atoi(serverId)
 	
-	peerPort := strconv.Itoa(20000+ id_num)
+	peerFacingPort := strconv.Itoa(20000+ id_num)
 
 	var peers []string
 
@@ -28,10 +27,10 @@ func main(){
 	}
 
 
-	server:= Server{pid: serverId, peers: peers, masterPort: masterPort, peerPort: peerPort, broadcastMode: false}
+	server:= Server{pid: serverId, peers: peers, masterFacingPort: masterFacingPort, peerFacingPort: peerFacingPort}
 	
 
-	server.run()
+	server.Run()
 
 
 	os.Exit(0)
