@@ -1,0 +1,21 @@
+0 startServer 3 10000
+1 startServer 3 10001
+2 startServer 3 10002
+10 startClient 0 10010
+11 startClient 1 10011
+12 startClient 2 10012
+0 block 1 2
+0 block 0 1
+0 block 1 0
+10 put url1 song1 0
+11 put url1 song11 1
+0 unblock 0 1
+0 unblock 1 0
+0 sleep 1
+10 get url1
+12 get url1
+0 unblock 1 2
+0 sleep 1
+12 get url1
+exit
+

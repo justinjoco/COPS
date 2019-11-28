@@ -1,0 +1,7 @@
+url1 *
+url2 * (url1,*)
+url3 *
+url2 song2
+url3 * (url2,*)-(url3,*)
+url3 song3
+url3 song33
