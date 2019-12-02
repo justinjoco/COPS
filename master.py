@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 """
 The master program for CS5414 COPS project.
 """
@@ -39,7 +39,7 @@ class PutOperation:
 
 # Forwards message
 def forwardMsg(o):
-    send(o.destId, "route " + o.srcId + " " + o.destId + " " + o.putId + " " + o.msg, block=False)
+    send(o.destId, o.msg, block=False)
 
 
 
@@ -105,7 +105,7 @@ class ClientHandler(Thread):
             srcId = s[1]
             destId = s[2]
             putId = s[3]
-            msg = s[4]
+            msg = " ".join(s[4:])
             o = PutOperation(srcId,destId,putId,msg)
             block_lock.acquire()
             # Check if message is not currently blocked
@@ -229,7 +229,7 @@ def main():
             threads[pid] = handler
             handler.start()
         elif cmd == 'startClient':
-            port = int(sp2[3])
+            port = int(sp2[4])
             if pid not in started_processes:
                 started_processes[pid] = True
             else:
@@ -237,9 +237,9 @@ def main():
                 exit()
             # start the process
             if debug:
-                process = subprocess.Popen(['./process', 'client', str(pid), sp2[2], sp2[3]], preexec_fn=os.setsid)
+                process = subprocess.Popen(['./process', 'client', str(pid), sp2[2], sp2[3], sp2[4]], preexec_fn=os.setsid)
             else:
-                process = subprocess.Popen(['./process', 'client', str(pid), sp2[2], sp2[3]], stdout=open('/dev/null', 'w'),
+                process = subprocess.Popen(['./process', 'client', str(pid), sp2[2], sp2[3], sp2[4]], stdout=open('/dev/null', 'w'),
                     stderr=open('/dev/null', 'w'), preexec_fn=os.setsid)
 
             # sleep for a while to allow the process be ready
