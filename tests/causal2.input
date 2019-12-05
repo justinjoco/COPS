@@ -1,19 +1,22 @@
-0 startServer 3 10000
-1 startServer 3 10001
-2 startServer 3 10002
-10 startClient 0 10010
-11 startClient 1 10011
-12 startClient 2 10012
-0 block 0 2
-10 put url1 song1 0
-11 put url2 song2 1
+0 startServer 3 2 10000
+1 startServer 3 2 10001
+1000 startServer 3 2 10002
+1001 startServer 3 2 10003
+2000 startServer 3 2 10004
+2001 startServer 3 2 10005
+60000 startClient 0 2 10006
+60001 startClient 1 2 10007
+60002 startClient 2 2 10008
+0 block 0 2001
+60000 put 1 song1 0
+60001 put 2 song2 1
 0 sleep 1
-11 get url1
-11 put url2 song22 2
+60001 get 1
+60001 put 2 song22 2
 0 sleep 1
-12 get url2
-0 unblock 0 2
+60002 get 2
+0 unblock 0 2001
 0 sleep 1
-12 get url2
+60002 get 2
 exit
 

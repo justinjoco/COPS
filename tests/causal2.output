@@ -1,6 +1,3 @@
-url1 *
-url2 *
-url1 song1
-url2 * (url1,*)-(url2,*)
-url2 song2
-url2 song22
+1 song1
+2 song2
+2 song22

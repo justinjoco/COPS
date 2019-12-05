@@ -1,38 +1,29 @@
 package main
 
 import (
+	"fmt"
 	"os"
-	"strconv"
 )
 
+func main() {
 
-func main(){
-
-	args :=os.Args[1:4]
-	
-
-	serverId := args[0]
-	n, _ := strconv.Atoi(args[1])
-	masterFacingPort :=  args[2]
-	id_num, _ := strconv.Atoi(serverId)
-	
-	peerFacingPort := strconv.Itoa(20000+ id_num)
-
-	var peers []string
-
-
-	for i:=0 ; i < n; i++ {
-		peerStr := strconv.Itoa(20000+i)
-		peers = append(peers, peerStr)
+	args := os.Args[1:5]
+	processType := args[0]
+	Id := args[1]
+	s := args[3]
+	port := args[5]
+	if processType == "server" {
+		n := args[2]
+		// start server
+		server := Server{sid: Id, masterFacingPort: port}
+		server.Run()
+	} else if processType == "client" {
+		did := args[2]
+		client := Client{cid: Id, did: did, masterFacingPort: port}
+		client.Run()
+	} else {
+		fmt.Println("Invalid process type, quitting")
+		os.Exit(0)
 	}
 
-
-	server:= Server{pid: serverId, peers: peers, masterFacingPort: masterFacingPort, peerFacingPort: peerFacingPort}
-	
-
-	server.Run()
-
-
-	os.Exit(0)
-	
 }
