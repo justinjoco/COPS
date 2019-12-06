@@ -2,24 +2,32 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
+	"strconv"
 )
 
 func main() {
 
 	args := os.Args[1:5]
 	processType := args[0]
-	Id := args[1]
-	s := args[3]
+	IntId, _ := strconv.Atoi(args[1])
+	numPartitions, _ := strconv.Atoi(args[3])
 	port := args[5]
 	if processType == "server" {
-		n := args[2]
+		n, _ := strconv.Atoi(args[2])
+		peerDids := make([]int, n)
+		for i := 0; i < n; i++ {
+			peerDids[i] = i
+		}
 		// start server
-		server := Server{sid: Id, masterFacingPort: port}
+		server := Server{sid: IntId, masterFacingPort: port, kvStore: make(map[string]string), peerDids: peerDids}
 		server.Run()
 	} else if processType == "client" {
 		did := args[2]
-		client := Client{cid: Id, did: did, masterFacingPort: port}
+		IntDid, _ := strconv.Atoi(did)
+		client := Client{cid: IntId, did: IntDid, masterFacingPort: port,
+			numPartitions: numPartitions, openedServerConns: make(map[int]net.Conn)}
 		client.Run()
 	} else {
 		fmt.Println("Invalid process type, quitting")

@@ -8,17 +8,13 @@ import (
 )
 
 type Server struct {
-	sid              string
-	dcid             string
+	sid              int
+	did              int // datacenter id
+	peerDids         []int
 	clientFacingPort string
 	masterFacingPort string
-	playList         map[string]string
+	kvStore          map[string]string
 }
-
-const (
-	CONNECT_HOST = "localhost"
-	CONNECT_TYPE = "tcp"
-)
 
 func (self *Server) Run() {
 
@@ -28,11 +24,11 @@ func (self *Server) Run() {
 		fmt.Println("Error listening!")
 	}
 
-	self.HandleMaster(lMaster)
+	self.ListenMaster(lMaster)
 
 }
 
-func (self *Server) HandleMaster(lMaster net.Listener) {
+func (self *Server) ListenMaster(lMaster net.Listener) {
 	defer lMaster.Close()
 
 	connMaster, error := lMaster.Accept()
@@ -48,11 +44,11 @@ func (self *Server) HandleMaster(lMaster net.Listener) {
 
 		message = strings.TrimSuffix(message, "\n")
 		messageSlice := strings.Split(message, " ")
-		retMessage := ""
-		connMaster.Write([]byte(retMessage))
 
 	}
-
 	connMaster.Close()
+}
 
+func (self *Server) HandleClient(lClient net.Listener) {
+	// handles the put_after command from the client and commits.
 }
