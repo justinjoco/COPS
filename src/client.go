@@ -16,6 +16,7 @@ type Client struct {
 	openedServerConns map[int]net.Conn // a map holding the connections to servers
 	// that have already been opened.
 	numPartitions int
+	keyVersionMap map[string]int
 }
 
 const (
@@ -51,7 +52,6 @@ func (self *Client) HandleMaster(lMaster net.Listener) {
 		message = strings.TrimSuffix(message, "\n")
 		messageSlice := strings.Split(message, " ")
 		command := messageSlice[0]
-		retMessage := ""
 		switch command {
 		case "put":
 			key := messageSlice[1]
@@ -72,8 +72,12 @@ func (self *Client) HandleMaster(lMaster net.Listener) {
 			msgToServer := "put " + key + " " + value + " " + putID + "\n"
 			fmt.Fprintf(self.openedServerConns[serverID], msgToServer)
 			//TODO: need to wait ack from server
-			response, _ := bufio.NewReader(self.openedServerConns[serverID]).ReadString('\n')
-
+			versionStr, _ := bufio.NewReader(self.openedServerConns[serverID]).ReadString('\n')
+			intVersionNum, _ := strconv.Atoi(versionStr)
+			self.keyVersionMap[key] = intVersionNum
+			msgLength := len("putResult success")
+			retMessage := strconv.Itoa(msgLength) + "-putResult success"
+			connMaster.Write([]byte(retMessage))
 		case "get":
 			key := messageSlice[1]
 		}
