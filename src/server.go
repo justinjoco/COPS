@@ -30,6 +30,7 @@ func (self *Server) Run() {
 		fmt.Println("Error while accepting connection")
 	}
 	lClient, errC := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+self.clientFacingPort)
+	defer lClient.Close()
 	if errC != nil {
 		fmt.Println("error listeining to client")
 	}
@@ -37,7 +38,7 @@ func (self *Server) Run() {
 	if error != nil {
 		fmt.Println("Error while accepting connection")
 	}
-	self.ListenMaster(connMaster)
+	go self.ListenMaster(connMaster)
 	self.HandleClient(connClient, connMaster)
 
 }
@@ -66,6 +67,7 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 	reader := bufio.NewReader(connClient)
 	for {
 		message, _ := reader.ReadString('\n')
+		fmt.Println("MESSAGE FROM CLIENT " + message)
 		message = strings.TrimSuffix(message, "\n")
 		messageSlice := strings.Split(message, " ")
 		command := messageSlice[0]

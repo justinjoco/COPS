@@ -98,7 +98,7 @@ class ClientHandler(Thread):
         if s[0] == 'getResult':
             wait_for_ack = False
             print msg.split(None,1)[1]
-	    elif s[0] == 'putResult':		
+        elif s[0] == 'putResult':		
             wait_for_ack = False		
         # Message that should be routed
         elif s[0] == 'route':

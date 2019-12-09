@@ -9,11 +9,12 @@ import (
 
 func main() {
 
-	args := os.Args[1:5]
+	args := os.Args[1:6]
+	fmt.Println(os.Args)
 	processType := args[0]
 	IntId, _ := strconv.Atoi(args[1])
 	numPartitions, _ := strconv.Atoi(args[3])
-	port := args[5]
+	port := args[4]
 	if processType == "server" {
 		n, _ := strconv.Atoi(args[2])
 		peerDids := make([]int, n)
@@ -21,7 +22,10 @@ func main() {
 			peerDids[i] = i
 		}
 		// start server
-		server := Server{sid: IntId, masterFacingPort: port,
+		clientFacingPort := strconv.Itoa(20000 + IntId)
+		fmt.Println("CLIENT FACING PORT")
+		fmt.Println(clientFacingPort)
+		server := Server{sid: IntId, masterFacingPort: port, clientFacingPort: clientFacingPort,
 			kvStore: make(map[string][]string), peerDids: peerDids}
 		server.Run()
 	} else if processType == "client" {

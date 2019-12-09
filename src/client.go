@@ -27,7 +27,7 @@ const (
 func (self *Client) Run() {
 
 	lMaster, error := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+self.masterFacingPort)
-	lServer, err := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+strconv.Itoa(self.cid)) //client's port that is exposed to its own partitions
+	//lServer, err := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+strconv.Itoa(self.cid)) //client's port that is exposed to its own partitions
 
 	if error != nil {
 		fmt.Println("Error listening!")
@@ -49,6 +49,7 @@ func (self *Client) HandleMaster(lMaster net.Listener) {
 		}
 
 		message, _ := reader.ReadString('\n')
+		fmt.Println("MESSAGE FROM MASTER " + message)
 		message = strings.TrimSuffix(message, "\n")
 		messageSlice := strings.Split(message, " ")
 		command := messageSlice[0]
@@ -60,9 +61,11 @@ func (self *Client) HandleMaster(lMaster net.Listener) {
 			putID := messageSlice[3]
 			// calculate serverID from key
 			serverID := intKey%self.numPartitions + self.did*1000
+
 			// first check if the connection has already been opened
 			if _, ok := self.openedServerConns[serverID]; !ok {
 				serverSendPort := 20000 + serverID
+				fmt.Println(serverSendPort)
 				serverConn, err := net.Dial(CONNECT_TYPE, CONNECT_HOST+":"+strconv.Itoa(serverSendPort))
 				if err != nil {
 					fmt.Println("error while dialing server port")
@@ -70,6 +73,8 @@ func (self *Client) HandleMaster(lMaster net.Listener) {
 				self.openedServerConns[serverID] = serverConn
 			}
 			msgToServer := "put " + key + " " + value + " " + putID + "\n"
+			fmt.Println("MESSAGING PARTITION")
+			fmt.Println(msgToServer)
 			fmt.Fprintf(self.openedServerConns[serverID], msgToServer)
 			//TODO: need to wait ack from server
 			versionStr, _ := bufio.NewReader(self.openedServerConns[serverID]).ReadString('\n')
