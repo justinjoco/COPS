@@ -48,9 +48,11 @@ func (self *Server) ListenMaster(connMaster net.Conn) {
 	reader := bufio.NewReader(connMaster)
 	for {
 		message, _ := reader.ReadString('\n')
-
+		fmt.Println("MESSAGE FROM MASTER TO REPLICATE")
+		fmt.Println(message)
 		message = strings.TrimSuffix(message, "\n")
 		messageSlice := strings.Split(message, ",")
+		fmt.Println(messageSlice)
 		receivedKey := messageSlice[0]
 		receivedValue := messageSlice[1]
 		if _, ok := self.kvStore[receivedKey]; !ok {
@@ -67,7 +69,7 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 	reader := bufio.NewReader(connClient)
 	for {
 		message, _ := reader.ReadString('\n')
-		fmt.Println("MESSAGE FROM CLIENT " + message)
+	//	fmt.Println("MESSAGE FROM CLIENT " + message)
 		message = strings.TrimSuffix(message, "\n")
 		messageSlice := strings.Split(message, " ")
 		command := messageSlice[0]
@@ -88,7 +90,10 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 				if otherDid == self.did {
 					continue
 				}
-				destID := strconv.Itoa(otherDid*1000 + self.sid)
+				fmt.Println(self.peerDids)
+				destID := strconv.Itoa(otherDid*1000 + self.sid%1000)
+				fmt.Println("DEST ID")
+				fmt.Println(destID)
 				msg := key + "," + value
 				msgToMaster = "route " + strconv.Itoa(self.sid) + " " + destID + " " + putID + " " + msg
 				msgLength := strconv.Itoa(len(msgToMaster))
@@ -97,6 +102,10 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 			}
 
 		case "get":
+			fmt.Println("SERVER ID")
+			fmt.Println(self.sid)
+			fmt.Println("KV STORE")
+			fmt.Println(self.kvStore)
 			key := messageSlice[1]
 			version, _ := strconv.Atoi(messageSlice[2])
 			retrievedValue := self.kvStore[key][version-1]

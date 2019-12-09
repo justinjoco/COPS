@@ -18,9 +18,11 @@ func main() {
 	if processType == "server" {
 		n, _ := strconv.Atoi(args[2])
 		peerDids := make([]int, n)
+
 		for i := 0; i < n; i++ {
 			peerDids[i] = i
 		}
+		fmt.Println(peerDids)
 		// start server
 		clientFacingPort := strconv.Itoa(20000 + IntId)
 		fmt.Println("CLIENT FACING PORT")
@@ -32,7 +34,7 @@ func main() {
 		did := args[2]
 		IntDid, _ := strconv.Atoi(did)
 		client := Client{cid: IntId, did: IntDid, masterFacingPort: port,
-			numPartitions: numPartitions, openedServerConns: make(map[int]net.Conn)}
+			numPartitions: numPartitions, openedServerConns: make(map[int]net.Conn), keyVersionMap:make(map[string]string)}
 		client.Run()
 	} else {
 		fmt.Println("Invalid process type, quitting")

@@ -81,6 +81,8 @@ func (self *Client) HandleMaster(lMaster net.Listener) {
 			self.keyVersionMap[key] = versionStr
 			msgLength := len("putResult success")
 			retMessage := strconv.Itoa(msgLength) + "-putResult success"
+			fmt.Println("ACK PUT")
+			fmt.Println(retMessage)
 			connMaster.Write([]byte(retMessage))
 		case "get":
 			key := messageSlice[1]
@@ -93,6 +95,8 @@ func (self *Client) HandleMaster(lMaster net.Listener) {
 			retMsg := "getResult " + key + " " + value
 			msgLength := len(retMsg)
 			retMessage := strconv.Itoa(msgLength) + "-" + retMsg
+			fmt.Println("ACK GET")
+			fmt.Println(retMessage)
 			connMaster.Write([]byte(retMessage))
 		}
 	}
