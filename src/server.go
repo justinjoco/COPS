@@ -79,6 +79,8 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 			} else {
 				self.kvStore[key] = append(self.kvStore[key], value)
 			}
+			latestVersion := strconv.Itoa(len(self.kvStore[key])) + "\n"
+			connClient.Write([]byte(latestVersion))
 			msgToMaster := ""
 			for _, otherDid := range self.peerDids {
 				if otherDid == self.did {
@@ -93,7 +95,11 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 			}
 
 		case "get":
-
+			key := messageSlice[1]
+			version, _ := strconv.Atoi(messageSlice[2])
+			retrievedValue := self.kvStore[key][version-1]
+			retMsg := retrievedValue + "\n"
+			connClient.Write([]byte(retMsg))
 		}
 	}
 }
