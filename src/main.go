@@ -21,7 +21,8 @@ func main() {
 			peerDids[i] = i
 		}
 		// start server
-		server := Server{sid: IntId, masterFacingPort: port, kvStore: make(map[string]string), peerDids: peerDids}
+		server := Server{sid: IntId, masterFacingPort: port,
+			kvStore: make(map[string][]string), peerDids: peerDids}
 		server.Run()
 	} else if processType == "client" {
 		did := args[2]
