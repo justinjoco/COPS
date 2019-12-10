@@ -14,6 +14,8 @@ type Server struct {
 	peerDids         []int // Shouldn't include own!
 	clientFacingPort string
 	masterFacingPort string
+	localFacingPort string
+	lClock			int
 	kvStore          map[string][]string //map from key to a slice of values,
 	//0th element in the slice is version 1
 }
@@ -38,7 +40,12 @@ func (self *Server) Run() {
 	if error != nil {
 		fmt.Println("Error while accepting connection")
 	}
+
+	//lLocal, errL := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+self.localFacingPort)
+
+
 	go self.ListenMaster(connMaster)
+	//go self.HandleLocal(lLocal)
 	self.HandleClient(connClient, connMaster)
 
 }
@@ -47,21 +54,29 @@ func (self *Server) ListenMaster(connMaster net.Conn) {
 
 	reader := bufio.NewReader(connMaster)
 	for {
+		
 		message, _ := reader.ReadString('\n')
+		message = strings.TrimSuffix(message, "\n")
 		fmt.Println("MESSAGE FROM MASTER TO REPLICATE")
 		fmt.Println(message)
-		message = strings.TrimSuffix(message, "\n")
 		messageSlice := strings.Split(message, ",")
 		fmt.Println(messageSlice)
 		receivedKey := messageSlice[0]
 		receivedValue := messageSlice[1]
+		receivedLC, _ := strconv.Atoi(messageSlice[2])
 		if _, ok := self.kvStore[receivedKey]; !ok {
 			self.kvStore[receivedKey] = []string{receivedValue}
 		} else {
 			self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue)
 		}
+		if receivedLC > self.lClock{
+			self.lClock = receivedLC
+		}
+		self.lClock += 1
+
+		fmt.Println(self.kvStore)
 	}
-	connMaster.Close()
+	//connMaster.Close()
 }
 
 func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
@@ -83,23 +98,32 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 			} else {
 				self.kvStore[key] = append(self.kvStore[key], value)
 			}
-			latestVersion := strconv.Itoa(len(self.kvStore[key])) + "\n"
-			connClient.Write([]byte(latestVersion))
+			self.lClock += 1
 			msgToMaster := ""
 			for _, otherDid := range self.peerDids {
+				
 				if otherDid == self.did {
+					fmt.Println("DON'T SEND TO SELF")
+					fmt.Println(self.did)
 					continue
 				}
-				fmt.Println(self.peerDids)
+	//			fmt.Println(self.peerDids)
 				destID := strconv.Itoa(otherDid*1000 + self.sid%1000)
+				fmt.Println("REPLICATE MESSAGE TO ")
 				fmt.Println("DEST ID")
 				fmt.Println(destID)
-				msg := key + "," + value
-				msgToMaster = "route " + strconv.Itoa(self.sid) + " " + destID + " " + putID + " " + msg
+				msg := key + "," + value + "," + strconv.Itoa(self.lClock)
+				msgToMaster = "route " + strconv.Itoa(self.sid) + " " + destID + " " + putID + " " + msg 
 				msgLength := strconv.Itoa(len(msgToMaster))
 				msgToMaster = msgLength + "-" + msgToMaster
+				fmt.Println(msgToMaster)
+				fmt.Println(self.kvStore)
+				//fmt.Fprintf(connMaster, msgToMaster)
 				connMaster.Write([]byte(msgToMaster))
 			}
+			latestVersion := strconv.Itoa(len(self.kvStore[key])) + "\n"
+			
+			connClient.Write([]byte(latestVersion))
 
 		case "get":
 			fmt.Println("SERVER ID")
@@ -114,3 +138,14 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 		}
 	}
 }
+/*
+func (self *Server) HandleLocal(lLocal net.Listener) {
+	defer lLocal.Close()
+	for {
+		connLocal, errL := lLocal.Accept()
+		if errL != nil {
+			fmt.Println("error listeining to client")
+		}
+	
+	}
+}*/

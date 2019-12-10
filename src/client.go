@@ -40,14 +40,13 @@ func (self *Client) HandleMaster(lMaster net.Listener) {
 	defer lMaster.Close()
 
 	connMaster, error := lMaster.Accept()
-	reader := bufio.NewReader(connMaster)
+	if error != nil {
+		fmt.Println("Error while client accepting master connection")
+	}
+	
 	for {
 
-		if error != nil {
-			fmt.Println("Error while client accepting master connection")
-			continue
-		}
-
+		reader := bufio.NewReader(connMaster)
 		message, _ := reader.ReadString('\n')
 		fmt.Println("MESSAGE FROM MASTER " + message)
 		message = strings.TrimSuffix(message, "\n")
@@ -78,12 +77,14 @@ func (self *Client) HandleMaster(lMaster net.Listener) {
 			fmt.Fprintf(self.openedServerConns[serverID], msgToServer)
 			//TODO: need to wait ack from server
 			versionStr, _ := bufio.NewReader(self.openedServerConns[serverID]).ReadString('\n')
+			versionStr = strings.TrimSuffix(versionStr, "\n")
 			self.keyVersionMap[key] = versionStr
 			msgLength := len("putResult success")
-			retMessage := strconv.Itoa(msgLength) + "-putResult success"
+			retMessage := strconv.Itoa(msgLength) + "-putResult success" 
 			fmt.Println("ACK PUT")
 			fmt.Println(retMessage)
 			connMaster.Write([]byte(retMessage))
+
 		case "get":
 			key := messageSlice[1]
 			intKey, _ := strconv.Atoi(key)
@@ -92,9 +93,10 @@ func (self *Client) HandleMaster(lMaster net.Listener) {
 			fmt.Fprintf(self.openedServerConns[serverID], msgToServer)
 			//need to wait response from server
 			value, _ := bufio.NewReader(self.openedServerConns[serverID]).ReadString('\n')
-			retMsg := "getResult " + key + " " + value
+			value = strings.TrimSuffix(value, "\n")
+			retMsg := "getResult " + key + " " + value 
 			msgLength := len(retMsg)
-			retMessage := strconv.Itoa(msgLength) + "-" + retMsg
+			retMessage := strconv.Itoa(msgLength) + "-" + retMsg 
 			fmt.Println("ACK GET")
 			fmt.Println(retMessage)
 			connMaster.Write([]byte(retMessage))

@@ -25,9 +25,11 @@ func main() {
 		fmt.Println(peerDids)
 		// start server
 		clientFacingPort := strconv.Itoa(20000 + IntId)
+		localFacingPort := strconv.Itoa(25000 + IntId)
+		did := IntId / 1000
 		fmt.Println("CLIENT FACING PORT")
 		fmt.Println(clientFacingPort)
-		server := Server{sid: IntId, masterFacingPort: port, clientFacingPort: clientFacingPort,
+		server := Server{sid: IntId,  did:did, masterFacingPort: port, clientFacingPort: clientFacingPort, localFacingPort: localFacingPort,
 			kvStore: make(map[string][]string), peerDids: peerDids}
 		server.Run()
 	} else if processType == "client" {

@@ -60,11 +60,13 @@ class ClientHandler(Thread):
         msgLen = 0
         while self.valid:
             try:
+                print(self.buffer)
                 # No message is being processed
                 if (msgLen == 0):
                     if (len(self.buffer) < 4):
                         # Not enough for an integer,
                         # must read more
+
                         data = self.sock.recv(1024)
                         self.buffer+=data
                     else:

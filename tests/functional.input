@@ -11,7 +11,4 @@
 60001 put 2 song2 1
 60002 put 3 song3 2
 0 sleep 1
-60000 get 1
-60001 get 2
-60002 get 3
 exit
