@@ -44,6 +44,7 @@ func (self *Server) Run() {
 	lLocal, errL := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+localFacingPort)
 	if errL != nil {
 		fmt.Println("Error while listening to local connection")
+		fmt.Println(errL)
 	}
 	go self.HandleLocal(lLocal)
 
