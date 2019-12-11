@@ -40,7 +40,6 @@ class PutOperation:
 # Forwards message
 def forwardMsg(o):
     send(o.destId, o.msg, block=False)
-    # print("ROUTE FORWARDED")
 
 
 
@@ -54,7 +53,9 @@ class ClientHandler(Thread):
         self.buffer = ""
         self.valid = True
         self.process = process
-        self.port = port
+        # print("THREAD INDEX: ", self.index)
+        # print("THREAD port: ", port)
+        # print("THREAD PID: ", self.process.pid)
 
 
     def run(self):
@@ -111,7 +112,6 @@ class ClientHandler(Thread):
             destId = s[2]
             putId = s[3]
             msg = " ".join(s[4:])
-            # print(s)
             o = PutOperation(srcId,destId,putId,msg)
             block_lock.acquire()
             # Check if message is not currently blocked
@@ -135,7 +135,9 @@ class ClientHandler(Thread):
         if self.valid:
             try:
                 os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
+                # print("killed process ", self.process.pid)
             except:
+                # print("PASSING")
                 pass
             self.close()
 
@@ -158,7 +160,6 @@ def send(index, data, set_wait=False, block=True):
     pid = int(index)
     if set_wait:
         wait_for_ack= True
-    # print("SENDING TO PORT {}".format(threads[pid].port))
     threads[pid].send(data)
 
 
@@ -173,7 +174,9 @@ def exit(is_exit=False):
 
     time.sleep(2)
     for k in threads:
+        # print(threads[k].valid)
         threads[k].kill()
+        # print("killed thread ", k)
     subprocess.Popen(['./stopall'], stdout=open('/dev/null', 'w'), stderr=open('/dev/null', 'w'))
     sys.stdout.flush()
     time.sleep(1)

@@ -14,7 +14,7 @@ type Server struct {
 	peerDids         []int // Shouldn't include own!
 	clientFacingPort string
 	masterFacingPort string
-	lClock			int
+	lClock           int
 	kvStore          map[string][]string //map from key to a slice of values,
 	//0th element in the slice is version 1
 }
@@ -27,13 +27,13 @@ func (self *Server) Run() {
 		fmt.Println("Error listening to master!")
 	}
 
-	connMaster, errMC  := lMaster.Accept()
+	connMaster, errMC := lMaster.Accept()
 	if errMC != nil {
 		fmt.Println("Error while accepting connection")
 	}
 
 	go self.ListenMaster(connMaster)
-	
+
 	lClient, errC := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+self.clientFacingPort)
 	if errC != nil {
 		fmt.Println("error listeining to client")
@@ -44,23 +44,18 @@ func (self *Server) Run() {
 		fmt.Println("Error while accepting connection")
 	}
 
-	
 	//go self.HandleLocal(lLocal)
 	self.HandleClient(connClient, connMaster)
-	
 
 }
-func (self *Server) DepCheck(){
-
+func (self *Server) DepCheck() {
 
 }
-
 
 func (self *Server) ListenMaster(connMaster net.Conn) {
 
-	reader := bufio.NewReader(connMaster)	
+	reader := bufio.NewReader(connMaster)
 	for {
-
 
 		message, _ := reader.ReadString('\n')
 		message = strings.TrimSuffix(message, "\n")
@@ -68,18 +63,17 @@ func (self *Server) ListenMaster(connMaster net.Conn) {
 		fmt.Println("MESSAGE FROM MASTER TO REPLICATE")
 		fmt.Println(message)
 		messageSlice := strings.Split(message, ",")
-	
+
 		receivedKey := messageSlice[0]
 		receivedValue := messageSlice[1]
 		receivedLC, _ := strconv.Atoi(messageSlice[2])
-		
 
 		if _, ok := self.kvStore[receivedKey]; !ok {
 			self.kvStore[receivedKey] = []string{receivedValue}
 		} else {
 			self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue)
 		}
-		if receivedLC > self.lClock{
+		if receivedLC > self.lClock {
 			self.lClock = receivedLC
 		}
 		self.lClock += 1
@@ -93,7 +87,7 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 	reader := bufio.NewReader(connClient)
 	for {
 		message, _ := reader.ReadString('\n')
-	//	fmt.Println("MESSAGE FROM CLIENT " + message)
+		//	fmt.Println("MESSAGE FROM CLIENT " + message)
 		message = strings.TrimSuffix(message, "\n")
 		messageSlice := strings.Split(message, " ")
 		command := messageSlice[0]
@@ -112,39 +106,46 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 			msgToMaster := ""
 			destIds := make([]string, 0)
 			for _, otherDid := range self.peerDids {
-				
+
 				if otherDid == self.did {
 					continue
 				}
 
-
 				destID := strconv.Itoa(otherDid*1000 + self.sid%1000)
 				destIds = append(destIds, destID)
-		
-				msg := key + "," + value + "," + strconv.Itoa(self.lClock) 
-				msgToMaster = "route " + strconv.Itoa(self.sid) + " " + destID + " " + putID + " " + msg 
+
+				msg := key + "," + value + "," + strconv.Itoa(self.lClock)
+				msgToMaster = "route " + strconv.Itoa(self.sid) + " " + destID + " " + putID + " " + msg
 				msgLength := strconv.Itoa(len(msgToMaster))
 				msgToMaster = msgLength + "-" + msgToMaster
-		
+
 				connMaster.Write([]byte(msgToMaster))
 			}
 
-			
-			
 			latestVersion := strconv.Itoa(len(self.kvStore[key])) + "\n"
-			
+
 			connClient.Write([]byte(latestVersion))
-			
+
 		case "get":
 
 			key := messageSlice[1]
 			version, _ := strconv.Atoi(messageSlice[2])
-			retrievedValue := self.kvStore[key][version-1]
-			retMsg := retrievedValue + "\n"
+			retVersion := ""
+			retrievedValue := ""
+			if version == 0 {
+				retrievedValue = self.kvStore[key][len(self.kvStore[key])-1]
+				retVersion = strconv.Itoa(len(self.kvStore[key]))
+			} else {
+				retrievedValue = self.kvStore[key][version-1]
+				retVersion = strconv.Itoa(version)
+			}
+
+			retMsg := retrievedValue + " " + retVersion + "\n"
 			connClient.Write([]byte(retMsg))
 		}
 	}
 }
+
 /*
 func (self *Server) HandleLocal(lLocal net.Listener) {
 	defer lLocal.Close()
@@ -153,6 +154,6 @@ func (self *Server) HandleLocal(lLocal net.Listener) {
 		if errL != nil {
 			fmt.Println("error listeining to client")
 		}
-	
+
 	}
 }*/

@@ -7,11 +7,19 @@
 60000 startClient 0 2 10006
 60001 startClient 1 2 10007
 60002 startClient 2 2 10008
+0 block 0 2001
+0 block 1 1
+0 block 1 1001
 60000 put 1 song1 0
-60001 put 2 song2 1
-60002 put 3 song3 2
-0 sleep 3
-60000 get 1
-60001 get 2
-60002 get 3
+60002 put 1 song11 1
+0 sleep 1
+60001 get 1
+60002 get 1
+0 unblock 0 2001
+0 unblock 1 1
+0 unblock 1 1001
+0 sleep 1
+60001 get 1
+60002 get 1
 exit
+

@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "./master.py", line 304, in <module>
+    main()
+  File "./master.py", line 262, in main
+    send(pid, sp1[1], True)
+  File "./master.py", line 157, in send
+    time.sleep(0.01)
+KeyboardInterrupt

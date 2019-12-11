@@ -1,0 +1,28 @@
+0 startServer 3 2 10000
+1 startServer 3 2 10001
+1000 startServer 3 2 10002
+1001 startServer 3 2 10003
+2000 startServer 3 2 10004
+2001 startServer 3 2 10005
+60000 startClient 0 2 10006
+60001 startClient 1 2 10007
+60002 startClient 2 2 10008
+0 block 0 2001
+60000 put 1 song1 0
+SENDING TO PORT 10006
+60001 put 2 song2 1
+['route', '1', '1001', '0', '1,song1,1']
+SENDING TO PORT 10003
+ROUTE FORWARDED
+['route', '1', '2001', '0', '1,song1,1']
+SENDING TO PORT 10007
+0 sleep 1
+['route', '1000', '0', '1', '2,song2,1']
+SENDING TO PORT 10000
+ROUTE FORWARDED
+['route', '1000', '2000', '1', '2,song2,1']
+SENDING TO PORT 10004
+ROUTE FORWARDED
+60001 get 1
+SENDING TO PORT 10007
+60001 put 2 song22 2
