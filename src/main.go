@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"os"
 	"strconv"
-	"bufio"
 )
 
 const (
@@ -31,19 +31,19 @@ func main() {
 		fmt.Println(peerDids)
 		// start server
 		clientFacingPort := strconv.Itoa(20000 + IntId)
-	//	localFacingPort := strconv.Itoa(25000 + IntId)
+		//	localFacingPort := strconv.Itoa(25000 + IntId)
 		did := IntId / 1000
-	//	fmt.Println("MASTER FACING PORT")
-	//	fmt.Println(port)
-		server := Server{sid: IntId,  did:did, masterFacingPort: port, clientFacingPort: clientFacingPort,
-			kvStore: make(map[string][]string), peerDids: peerDids}
-			
+		//	fmt.Println("MASTER FACING PORT")
+		//	fmt.Println(port)
+		server := Server{sid: IntId, did: did, masterFacingPort: port, clientFacingPort: clientFacingPort,
+			numPartitions: numPartitions, kvStore: make(map[string][]string), peerDids: peerDids}
+
 		server.Run()
 	} else if processType == "client" {
 		did := args[2]
 		IntDid, _ := strconv.Atoi(did)
 		client := Client{cid: IntId, did: IntDid, masterFacingPort: port, readers: make(map[int]*bufio.Reader),
-			numPartitions: numPartitions, openedServerConns: make(map[int]net.Conn), keyVersionMap:make(map[string]string)}
+			numPartitions: numPartitions, openedServerConns: make(map[int]net.Conn), keyVersionMap: make(map[string]string)}
 		client.Run()
 	} else {
 		fmt.Println("Invalid process type, quitting")
