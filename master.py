@@ -60,9 +60,10 @@ class ClientHandler(Thread):
         msgLen = 0
         while self.valid:
             try:
-                print(self.buffer)
+               # print(self.buffer)
                 # No message is being processed
                 if (msgLen == 0):
+                   # print(self.sock.getsockname())
                     if (len(self.buffer) < 4):
                         # Not enough for an integer,
                         # must read more
@@ -198,9 +199,12 @@ def main():
         if line == '':  # end of a file
             exit()
         line = line.strip()  # remove trailing '\n'
+        print(line)
         if line == 'exit':  # exit when reading 'exit' command
             while wait_for_ack:
+                print("Wait for ack")
                 time.sleep(0.1)
+          #  print("Wait for ack is false")
             exit()
         if len(line) == 0:
             continue

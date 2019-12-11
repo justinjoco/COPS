@@ -23,7 +23,7 @@ type Server struct {
 func (self *Server) Run() {
 
 	lMaster, error := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+self.masterFacingPort)
-	defer lMaster.Close()
+//	defer lMaster.Close()
 	if error != nil {
 		fmt.Println("Error listening to master!")
 	}
@@ -32,7 +32,7 @@ func (self *Server) Run() {
 		fmt.Println("Error while accepting connection")
 	}
 	lClient, errC := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+self.clientFacingPort)
-	defer lClient.Close()
+//	defer lClient.Close()
 	if errC != nil {
 		fmt.Println("error listeining to client")
 	}
@@ -49,6 +49,11 @@ func (self *Server) Run() {
 	self.HandleClient(connClient, connMaster)
 
 }
+func (self *Server) DepCheck(){
+
+
+}
+
 
 func (self *Server) ListenMaster(connMaster net.Conn) {
 
@@ -64,6 +69,8 @@ func (self *Server) ListenMaster(connMaster net.Conn) {
 		receivedKey := messageSlice[0]
 		receivedValue := messageSlice[1]
 		receivedLC, _ := strconv.Atoi(messageSlice[2])
+		self.DepCheck()
+
 		if _, ok := self.kvStore[receivedKey]; !ok {
 			self.kvStore[receivedKey] = []string{receivedValue}
 		} else {
@@ -103,12 +110,11 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 			for _, otherDid := range self.peerDids {
 				
 				if otherDid == self.did {
-					fmt.Println("DON'T SEND TO SELF")
-					fmt.Println(self.did)
 					continue
 				}
 	//			fmt.Println(self.peerDids)
 				destID := strconv.Itoa(otherDid*1000 + self.sid%1000)
+				fmt.Println(self.sid)
 				fmt.Println("REPLICATE MESSAGE TO ")
 				fmt.Println("DEST ID")
 				fmt.Println(destID)
@@ -116,7 +122,7 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 				msgToMaster = "route " + strconv.Itoa(self.sid) + " " + destID + " " + putID + " " + msg 
 				msgLength := strconv.Itoa(len(msgToMaster))
 				msgToMaster = msgLength + "-" + msgToMaster
-				fmt.Println(msgToMaster)
+			//	fmt.Println(msgToMaster)
 				fmt.Println(self.kvStore)
 				//fmt.Fprintf(connMaster, msgToMaster)
 				connMaster.Write([]byte(msgToMaster))

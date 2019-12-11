@@ -32,21 +32,21 @@ func (self *Client) Run() {
 	if error != nil {
 		fmt.Println("Error listening!")
 	}
-
-	self.HandleMaster(lMaster)
-}
-
-func (self *Client) HandleMaster(lMaster net.Listener) {
-	defer lMaster.Close()
-
 	connMaster, error := lMaster.Accept()
 	if error != nil {
 		fmt.Println("Error while client accepting master connection")
 	}
+
+	self.HandleMaster(connMaster)
+}
+
+func (self *Client) HandleMaster(connMaster net.Conn) {
+	//defer lMaster.Close()
+
 	
+	reader := bufio.NewReader(connMaster)
 	for {
 
-		reader := bufio.NewReader(connMaster)
 		message, _ := reader.ReadString('\n')
 		fmt.Println("MESSAGE FROM MASTER " + message)
 		message = strings.TrimSuffix(message, "\n")
@@ -79,8 +79,9 @@ func (self *Client) HandleMaster(lMaster net.Listener) {
 			versionStr, _ := bufio.NewReader(self.openedServerConns[serverID]).ReadString('\n')
 			versionStr = strings.TrimSuffix(versionStr, "\n")
 			self.keyVersionMap[key] = versionStr
-			msgLength := len("putResult success")
-			retMessage := strconv.Itoa(msgLength) + "-putResult success" 
+			retMsg := "putResult success"
+			msgLength := len(retMsg)
+			retMessage := strconv.Itoa(msgLength) + "-" +retMsg
 			fmt.Println("ACK PUT")
 			fmt.Println(retMessage)
 			connMaster.Write([]byte(retMessage))

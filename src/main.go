@@ -31,6 +31,7 @@ func main() {
 		fmt.Println(clientFacingPort)
 		server := Server{sid: IntId,  did:did, masterFacingPort: port, clientFacingPort: clientFacingPort, localFacingPort: localFacingPort,
 			kvStore: make(map[string][]string), peerDids: peerDids}
+			
 		server.Run()
 	} else if processType == "client" {
 		did := args[2]
