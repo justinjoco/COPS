@@ -40,6 +40,7 @@ class PutOperation:
 # Forwards message
 def forwardMsg(o):
     send(o.destId, o.msg, block=False)
+    print("ROUTE FORWARDED")
 
 
 
@@ -53,6 +54,7 @@ class ClientHandler(Thread):
         self.buffer = ""
         self.valid = True
         self.process = process
+        self.port = port
 
 
     def run(self):
@@ -109,6 +111,7 @@ class ClientHandler(Thread):
             destId = s[2]
             putId = s[3]
             msg = " ".join(s[4:])
+            print(s)
             o = PutOperation(srcId,destId,putId,msg)
             block_lock.acquire()
             # Check if message is not currently blocked
@@ -155,6 +158,7 @@ def send(index, data, set_wait=False, block=True):
     pid = int(index)
     if set_wait:
         wait_for_ack= True
+    print("SENDING TO PORT {}".format(threads[pid].port))
     threads[pid].send(data)
 
 

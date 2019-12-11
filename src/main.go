@@ -5,6 +5,12 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"bufio"
+)
+
+const (
+	CONNECT_HOST = "localhost"
+	CONNECT_TYPE = "tcp"
 )
 
 func main() {
@@ -25,18 +31,18 @@ func main() {
 		fmt.Println(peerDids)
 		// start server
 		clientFacingPort := strconv.Itoa(20000 + IntId)
-		localFacingPort := strconv.Itoa(25000 + IntId)
+	//	localFacingPort := strconv.Itoa(25000 + IntId)
 		did := IntId / 1000
-		fmt.Println("CLIENT FACING PORT")
-		fmt.Println(clientFacingPort)
-		server := Server{sid: IntId,  did:did, masterFacingPort: port, clientFacingPort: clientFacingPort, localFacingPort: localFacingPort,
+	//	fmt.Println("MASTER FACING PORT")
+	//	fmt.Println(port)
+		server := Server{sid: IntId,  did:did, masterFacingPort: port, clientFacingPort: clientFacingPort,
 			kvStore: make(map[string][]string), peerDids: peerDids}
 			
 		server.Run()
 	} else if processType == "client" {
 		did := args[2]
 		IntDid, _ := strconv.Atoi(did)
-		client := Client{cid: IntId, did: IntDid, masterFacingPort: port,
+		client := Client{cid: IntId, did: IntDid, masterFacingPort: port, readers: make(map[int]*bufio.Reader),
 			numPartitions: numPartitions, openedServerConns: make(map[int]net.Conn), keyVersionMap:make(map[string]string)}
 		client.Run()
 	} else {

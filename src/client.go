@@ -17,12 +17,9 @@ type Client struct {
 	// that have already been opened.
 	numPartitions int
 	keyVersionMap map[string]string
+	readers       map[int]*bufio.Reader
 }
 
-const (
-	CONNECT_HOST = "localhost"
-	CONNECT_TYPE = "tcp"
-)
 
 func (self *Client) Run() {
 
@@ -48,7 +45,7 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 	for {
 
 		message, _ := reader.ReadString('\n')
-		fmt.Println("MESSAGE FROM MASTER " + message)
+		fmt.Println("REQUEST FROM MASTER " + message)
 		message = strings.TrimSuffix(message, "\n")
 		messageSlice := strings.Split(message, " ")
 		command := messageSlice[0]
@@ -64,7 +61,7 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 			// first check if the connection has already been opened
 			if _, ok := self.openedServerConns[serverID]; !ok {
 				serverSendPort := 20000 + serverID
-				fmt.Println(serverSendPort)
+	
 				serverConn, err := net.Dial(CONNECT_TYPE, CONNECT_HOST+":"+strconv.Itoa(serverSendPort))
 				if err != nil {
 					fmt.Println("error while dialing server port")
@@ -72,34 +69,42 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 				self.openedServerConns[serverID] = serverConn
 			}
 			msgToServer := "put " + key + " " + value + " " + putID + "\n"
-			fmt.Println("MESSAGING PARTITION")
-			fmt.Println(msgToServer)
+	
 			fmt.Fprintf(self.openedServerConns[serverID], msgToServer)
 			//TODO: need to wait ack from server
-			versionStr, _ := bufio.NewReader(self.openedServerConns[serverID]).ReadString('\n')
+			if _, ok := self.readers[serverID]; !ok {
+				self.readers[serverID] = bufio.NewReader(self.openedServerConns[serverID])
+			}
+			versionStr, _ := self.readers[serverID].ReadString('\n')
 			versionStr = strings.TrimSuffix(versionStr, "\n")
 			self.keyVersionMap[key] = versionStr
 			retMsg := "putResult success"
 			msgLength := len(retMsg)
 			retMessage := strconv.Itoa(msgLength) + "-" +retMsg
-			fmt.Println("ACK PUT")
-			fmt.Println(retMessage)
+	
 			connMaster.Write([]byte(retMessage))
 
 		case "get":
+
 			key := messageSlice[1]
 			intKey, _ := strconv.Atoi(key)
 			serverID := intKey%self.numPartitions + self.did*1000
+			fmt.Println(self.cid)
+			fmt.Println(self.keyVersionMap)
 			msgToServer := "get " + key + " " + self.keyVersionMap[key] + "\n"
 			fmt.Fprintf(self.openedServerConns[serverID], msgToServer)
 			//need to wait response from server
-			value, _ := bufio.NewReader(self.openedServerConns[serverID]).ReadString('\n')
+			if _, ok := self.readers[serverID]; !ok {
+				self.readers[serverID] = bufio.NewReader(self.openedServerConns[serverID])
+			}
+
+
+			value, _ := self.readers[serverID].ReadString('\n')
 			value = strings.TrimSuffix(value, "\n")
 			retMsg := "getResult " + key + " " + value 
 			msgLength := len(retMsg)
 			retMessage := strconv.Itoa(msgLength) + "-" + retMsg 
-			fmt.Println("ACK GET")
-			fmt.Println(retMessage)
+		
 			connMaster.Write([]byte(retMessage))
 		}
 	}
