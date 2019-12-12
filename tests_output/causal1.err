@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "./master.py", line 304, in <module>
-    main()
-  File "./master.py", line 236, in main
-    time.sleep(3)
-KeyboardInterrupt

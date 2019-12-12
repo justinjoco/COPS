@@ -18,6 +18,7 @@ type Client struct {
 	numPartitions int
 	keyVersionMap map[string]string
 	readers       map[int]*bufio.Reader
+	nearest			map[string]string
 }
 
 func (self *Client) Run() {
@@ -66,7 +67,15 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 				}
 				self.openedServerConns[serverID] = serverConn
 			}
-			msgToServer := "put " + key + " " + value + " " + putID + "\n"
+
+		
+			nearestStr := ""
+
+			for nearKey, nearVersion := range self.nearest{
+				nearestStr += nearKey + ":" + nearVersion + " "
+			}
+
+			msgToServer := "put " + key + " " + value + " " + putID + " " + strings.TrimSpace(nearestStr) +"\n"
 
 			fmt.Fprintf(self.openedServerConns[serverID], msgToServer)
 			//TODO: need to wait ack from server
@@ -75,7 +84,11 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 			}
 			versionStr, _ := self.readers[serverID].ReadString('\n')
 			versionStr = strings.TrimSuffix(versionStr, "\n")
+			self.nearest = make(map[string]string)
+
 			self.keyVersionMap[key] = versionStr
+			self.nearest[key] = versionStr
+
 			retMsg := "putResult success"
 			msgLength := len(retMsg)
 			retMessage := strconv.Itoa(msgLength) + "-" + retMsg
@@ -92,7 +105,7 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 			msgToServer := "get " + key + " " + self.keyVersionMap[key] + "\n"
 			fmt.Println("SERVER ID")
 			fmt.Println(serverID)
-			fmt.Println(self.readers)
+			//fmt.Println(self.readers)
 			//need to wait response from server
 			if _, ok := self.openedServerConns[serverID]; !ok {
 				serverSendPort := 20000 + serverID
@@ -116,6 +129,7 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 			version := serverMsgSlice[1]
 			// update key version map
 			self.keyVersionMap[key] = version
+			self.nearest[key] = version
 			retMsg := "getResult " + key + " " + value
 			msgLength := len(retMsg)
 			retMessage := strconv.Itoa(msgLength) + "-" + retMsg
