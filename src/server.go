@@ -188,6 +188,117 @@ func (self *Server) ListenMaster(lMaster net.Listener) {
 
 }
 
+
+
+func (self *Server) ProcessQueue() {
+
+
+	newQueue := make([]string, 0)
+	for _, message := range self.msgQueue{
+		currResolved := true
+		messageSlice := strings.Split(message, ",")
+
+		receivedKey := messageSlice[0]
+		receivedValue := messageSlice[1]
+		senderDid := messageSlice[2]
+		receivedVersion, _ := strconv.Atoi(messageSlice[3])
+		receivedNearest := messageSlice[4:]
+
+		currentVersion := len(self.kvStore[receivedKey])
+		senderDidInt, _ := strconv.Atoi(senderDid)
+		for _, depStr := range receivedNearest {
+			dep := strings.Split(depStr, ":")
+			if len(dep) < 2 {
+				continue
+			}
+			depKey, _ := strconv.Atoi(dep[0])
+			depVersion := dep[1]
+
+			//depVersionInt, _ := strconv.Atoi(dep[1])
+			localId := depKey % self.numPartitions
+			fmt.Println("DEP KEY, DEP VERSION, CURRENT VERSION")
+			fmt.Println(depKey)
+
+
+			//	myId := self.sid%1000
+			//if depVersionInt > currentVersion{
+			if _, ok := self.connLocalServers[localId]; !ok {
+				otherServerPort := strconv.Itoa(25000 + localId + 100*self.did) // some math  here
+				connLocal, err := net.Dial(CONNECT_TYPE, CONNECT_HOST+":"+otherServerPort)
+				if err != nil {
+					fmt.Println("errro connection to local server")
+				}
+				self.connLocalServers[localId] = connLocal
+			}
+			otherServerConn := self.connLocalServers[localId]
+
+			msgToLocal := "dep_check " + dep[0] + " " + depVersion + " " + senderDid + "\n"
+
+			otherServerConn.Write([]byte(msgToLocal))
+			// wait for dep respionse from other server
+			if _, ok := self.localServerReaders[localId]; !ok {
+				reader := bufio.NewReader(otherServerConn)
+				self.localServerReaders[localId] = reader
+			}
+			localReader := self.localServerReaders[localId]
+			otherServerReply, _ := localReader.ReadString('\n')
+			otherServerReply = strings.TrimSuffix(otherServerReply, "\n") // string of true or false
+			fmt.Println(otherServerReply)
+			if otherServerReply != "resolved" {
+				currResolved = false
+				break
+			}
+			//	}
+
+		}
+
+		if currResolved {
+			lock.Lock()
+
+			if receivedVersion >= currentVersion {
+
+				if _, ok := self.kvStore[receivedKey]; !ok {
+					self.kvStore[receivedKey] = []string{receivedValue + "," + senderDid}
+				} else {
+
+					self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue+","+senderDid)
+
+				}
+				self.BroadcastLC()
+			} else {
+
+				fmt.Println("ELSE STATEMENT: HANDLING SELF")
+
+				if _, ok := self.kvStore[receivedKey]; !ok {
+					self.kvStore[receivedKey] = []string{receivedValue + "," + senderDid}
+					self.BroadcastLC()
+				} else {
+					valDidSlice := strings.Split(self.kvStore[receivedKey][len(self.kvStore[receivedKey])-1], ",")
+					did, _ := strconv.Atoi(valDidSlice[1])
+					if senderDidInt >= did {
+
+						self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue+","+senderDid)
+						self.BroadcastLC()
+					}
+				}
+
+			}
+			lock.Unlock()
+
+
+		} else{
+			newQueue = append(newQueue, message)
+
+		}
+
+
+	}
+
+	self.msgQueue = newQueue
+
+}
+
+
 func (self *Server) HandleClient(lClient net.Listener) {
 	// handles the put_after command from the client and commits.
 
@@ -277,112 +388,6 @@ func (self *Server) HandleClient(lClient net.Listener) {
 	}
 }
 
-func (self *Server) ProcessQueue() {
-	newQueue := make([]string, 0)
-	for _, message := range self.msgQueue {
-
-		messageSlice := strings.Split(message, ",")
-
-		receivedKey := messageSlice[0]
-		receivedValue := messageSlice[1]
-		senderDid := messageSlice[2]
-		receivedVersion, _ := strconv.Atoi(messageSlice[3])
-		receivedNearest := messageSlice[4:]
-
-		senderDidInt, _ := strconv.Atoi(senderDid)
-
-		currentVersion := len(self.kvStore[receivedKey])
-
-		fmt.Println("RECEIVED NEAREST")
-		fmt.Println(receivedNearest)
-
-		for _, depStr := range receivedNearest {
-			dep := strings.Split(depStr, ":")
-			if len(dep) < 2 {
-				continue
-			}
-			depKey, _ := strconv.Atoi(dep[0])
-			depVersion := dep[1]
-
-			//depVersionInt, _ := strconv.Atoi(dep[1])
-			localId := depKey % self.numPartitions
-			fmt.Println("DEP KEY, DEP VERSION, CURRENT VERSION")
-			fmt.Println(depKey)
-			fmt.Println(depVersion)
-			fmt.Println(currentVersion)
-
-			//	myId := self.sid%1000
-			//if depVersionInt > currentVersion{
-			if _, ok := self.connLocalServers[localId]; !ok {
-				otherServerPort := strconv.Itoa(25000 + localId + 100*self.did) // some math  here
-				connLocal, err := net.Dial(CONNECT_TYPE, CONNECT_HOST+":"+otherServerPort)
-				if err != nil {
-					fmt.Println("errro connection to local server")
-				}
-				self.connLocalServers[localId] = connLocal
-			}
-			otherServerConn := self.connLocalServers[localId]
-
-			msgToLocal := "dep_check " + dep[0] + " " + depVersion + " " + senderDid + "\n"
-
-			otherServerConn.Write([]byte(msgToLocal))
-			// wait for dep respionse from other server
-			if _, ok := self.localServerReaders[localId]; !ok {
-				reader := bufio.NewReader(otherServerConn)
-				self.localServerReaders[localId] = reader
-			}
-			localReader := self.localServerReaders[localId]
-			otherServerReply, _ := localReader.ReadString('\n')
-			otherServerReply = strings.TrimSuffix(otherServerReply, "\n") // string of true or false
-			fmt.Println(otherServerReply)
-			if otherServerReply != "resolved" {
-				newQueue = append(newQueue, message)
-				break
-			}
-
-		}
-		self.msgQueue = newQueue
-
-		fmt.Println("MY DID")
-		fmt.Println(self.did)
-
-		fmt.Println("SENDER DID")
-		fmt.Println(senderDid)
-
-		lock.Lock()
-
-		if receivedVersion >= currentVersion {
-
-			if _, ok := self.kvStore[receivedKey]; !ok {
-				self.kvStore[receivedKey] = []string{receivedValue + "," + senderDid}
-			} else {
-
-				self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue+","+senderDid)
-
-			}
-		} else {
-
-			fmt.Println("ELSE STATEMENT: HANDLING SELF")
-
-			if _, ok := self.kvStore[receivedKey]; !ok {
-				self.kvStore[receivedKey] = []string{receivedValue + "," + senderDid}
-			} else {
-				valDidSlice := strings.Split(self.kvStore[receivedKey][len(self.kvStore[receivedKey])-1], ",")
-				did, _ := strconv.Atoi(valDidSlice[1])
-				if senderDidInt >= did {
-
-					self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue+","+senderDid)
-
-				}
-			}
-
-		}
-	}
-	lock.Unlock()
-	fmt.Println("KV STORE AFTER REPLICATE")
-	fmt.Println(self.kvStore)
-
-}
 
 func (self *Server) HandleLocal(lLocal net.Listener) {
 	defer lLocal.Close()
