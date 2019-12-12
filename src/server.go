@@ -26,6 +26,7 @@ type Server struct {
 	noDependency       string //"true" if no dependency issues, "false" otherwise. i.e. if this server is "blocking" then false
 	msgQueue           map[int]string
 	connMaster			net.Conn
+
 }
 
 var lock = sync.RWMutex{}
@@ -93,7 +94,13 @@ func (self *Server) ListenMaster(lMaster net.Listener) {
 
 		receivedKey := messageSlice[0]
 		receivedValue := messageSlice[1]
-		receivedNearest:= messageSlice[2:]
+		senderDid := messageSlice[2]
+		receivedVersion, _ := strconv.Atoi(messageSlice[3])
+		receivedNearest:= messageSlice[4:]
+
+		senderDidInt, _ := strconv.Atoi(senderDid)
+
+		currentVersion := len(self.kvStore[receivedKey])
 		fmt.Println("RECEIVED NEAREST")
 		fmt.Println(receivedNearest)
 
@@ -105,13 +112,16 @@ func (self *Server) ListenMaster(lMaster net.Listener) {
 			depKey, _ := strconv.Atoi(dep[0])
 			depVersion := dep[1]
 
+			//depVersionInt, _ := strconv.Atoi(dep[1])
 			localId := depKey%self.numPartitions
-			fmt.Println("DEP KEY, DEP VERSION, local ID")
+			fmt.Println("DEP KEY, DEP VERSION, CURRENT VERSION")
 			fmt.Println(depKey)
 			fmt.Println(depVersion)
-			fmt.Println(localId)
-			
-			if _, ok := self.connLocalServers[localId]; !ok {
+			fmt.Println(currentVersion)
+
+		//	myId := self.sid%1000
+			//if depVersionInt > currentVersion{
+				if _, ok := self.connLocalServers[localId]; !ok {
 					otherServerPort := strconv.Itoa(25000 + localId + 100*self.did) // some math  here
 					connLocal, err := net.Dial(CONNECT_TYPE, CONNECT_HOST+":"+otherServerPort)
 					if err != nil {
@@ -121,7 +131,7 @@ func (self *Server) ListenMaster(lMaster net.Listener) {
 				}
 				otherServerConn := self.connLocalServers[localId]
 
-				msgToLocal := "dep_check " + dep[0] + " " + depVersion + "\n"
+				msgToLocal := "dep_check " + dep[0] + " " + depVersion + " " + senderDid + "\n"
 
 				otherServerConn.Write([]byte(msgToLocal))
 				// wait for dep respionse from other server
@@ -133,16 +143,44 @@ func (self *Server) ListenMaster(lMaster net.Listener) {
 				otherServerReply, _ := localReader.ReadString('\n')
 				otherServerReply = strings.TrimSuffix(otherServerReply, "\n") // string of true or false
 				fmt.Println(otherServerReply)
-			
+		//	} 
+
 
 		}
 
+		fmt.Println("MY DID")
+		fmt.Println(self.did)
+
+		fmt.Println("SENDER DID")
+		fmt.Println(senderDid)
 		
 		lock.Lock()	
-		if _, ok := self.kvStore[receivedKey]; !ok {
-			self.kvStore[receivedKey] = []string{receivedValue}
+		
+		if receivedVersion != currentVersion {
+
+
+
+			if _, ok := self.kvStore[receivedKey]; !ok {
+				self.kvStore[receivedKey] = []string{receivedValue}
+			} else {
+
+				self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue)
+				
+			}
 		} else {
-			self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue)
+
+			fmt.Println("ELSE STATEMENT: HANDLING SELF")
+					
+			if senderDidInt >= self.did {
+				if _, ok := self.kvStore[receivedKey]; !ok {
+					self.kvStore[receivedKey] = []string{receivedValue}
+				} else {
+
+					self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue)
+					
+				}
+			}
+				
 		}
 		lock.Unlock()
 		fmt.Println("KV STORE AFTER REPLICATE")
@@ -177,12 +215,14 @@ func (self *Server) HandleClient(lClient net.Listener) {
 			fmt.Println("NEAREST")
 			fmt.Println(nearest)
 			nearestStr := strings.Join(nearest, ",")
+			version := 0
 			lock.Lock()	
 			if _, ok := self.kvStore[key]; !ok {
 				self.kvStore[key] = []string{value}
 			} else {
 				self.kvStore[key] = append(self.kvStore[key], value)
 			}
+			version = len(self.kvStore[key])
 			lock.Unlock()
 		//	self.lClock += 1
 
@@ -200,7 +240,7 @@ func (self *Server) HandleClient(lClient net.Listener) {
 				destIds = append(destIds, destID)
 
 
-				msg := key + "," + value + "," + nearestStr
+				msg := key + "," + value + "," + strconv.Itoa(self.did) + "," + strconv.Itoa(version)+ "," + nearestStr 
 
 
 				msgToMaster = "route " + strconv.Itoa(self.sid) + " " + destID + " " + putID + " " + msg
@@ -268,6 +308,7 @@ func (self *Server) HandleLocal(lLocal net.Listener) {
 					
 						continue
 					} else if versionNum  == versionDep {
+
 						connLocal.Write([]byte("resolved\n"))
 						break
 					} else{
