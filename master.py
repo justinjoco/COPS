@@ -54,7 +54,6 @@ class ClientHandler(Thread):
         self.buffer = ""
         self.valid = True
         self.process = process
-        self.port = port
 
 
     def run(self):
