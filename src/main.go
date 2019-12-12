@@ -38,9 +38,8 @@ func main() {
 
 		server := Server{sid: IntId, did: did, masterFacingPort: port, clientFacingPort: clientFacingPort,
 			numPartitions: numPartitions, kvStore: make(map[string][]string), peerDids: peerDids,
-			connLocalServers: make(map[int]net.Conn), localServerReaders:make(map[int]*bufio.Reader),
-			msgQueue:make(map[int]string,0)}
-
+			connLocalServers: make(map[int]net.Conn), localServerReaders: make(map[int]*bufio.Reader),
+			msgQueue: make([]string, 0)}
 
 		server.Run()
 	} else if processType == "client" {
