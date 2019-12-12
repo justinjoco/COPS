@@ -41,6 +41,7 @@ func main() {
 			connLocalServers: make(map[int]net.Conn), localServerReaders:make(map[int]*bufio.Reader),
 			msgQueue:make(map[int]string,0)}
 
+
 		server.Run()
 	} else if processType == "client" {
 		did := args[2]

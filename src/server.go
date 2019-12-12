@@ -17,7 +17,7 @@ type Server struct {
 	clientFacingPort string
 	masterFacingPort string
 	numPartitions    int
-	lClock           int
+	contextID        int
 	kvStore          map[string][]string //map from key to a slice of values,
 	//0th element in the slice is version 1
 	latestMsgID        int //starts from 0, i.e if we receive something with 2 first, then wait until received 1, then commit both
@@ -40,13 +40,15 @@ func (self *Server) Run() {
 
 
 
+
 	localFacingPort := strconv.Itoa(25000 + self.sid%1000 + 100*self.did)
+
 	lLocal, errL := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+localFacingPort)
 	if errL != nil {
 		fmt.Println("Error while listening to local connection")
 		fmt.Println(errL)
 	}
-//	go self.CheckQueue()
+
 	lClient, errC := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+self.clientFacingPort)
 	if errC != nil {
 			fmt.Println("error listeining to client")
@@ -58,9 +60,8 @@ func (self *Server) Run() {
 	go self.ListenMaster(lMaster)
 
 	
-	
-
 	self.HandleClient(lClient)
+
 
 }
 
@@ -133,6 +134,7 @@ func (self *Server) ListenMaster(lMaster net.Listener) {
 				otherServerReply = strings.TrimSuffix(otherServerReply, "\n") // string of true or false
 				fmt.Println(otherServerReply)
 			
+
 		}
 
 		
@@ -184,8 +186,10 @@ func (self *Server) HandleClient(lClient net.Listener) {
 			lock.Unlock()
 		//	self.lClock += 1
 
+
 			msgToMaster := ""
 			destIds := make([]string, 0)
+
 			for _, otherDid := range self.peerDids {
 
 				if otherDid == self.did {
@@ -197,6 +201,8 @@ func (self *Server) HandleClient(lClient net.Listener) {
 
 
 				msg := key + "," + value + "," + nearestStr
+
+
 				msgToMaster = "route " + strconv.Itoa(self.sid) + " " + destID + " " + putID + " " + msg
 				msgLength := strconv.Itoa(len(msgToMaster))
 				msgToMaster = msgLength + "-" + msgToMaster
@@ -244,6 +250,7 @@ func (self *Server) HandleLocal(lLocal net.Listener) {
 	for {
 		message, _ := reader.ReadString('\n')
 		message = strings.TrimSuffix(message, "\n")
+
 		messageSlice := strings.Split(message, " ")
 	//	fmt.Println("RECEIVED DEP CHECK FROM LOCAL")
 		command := messageSlice[0]
@@ -271,7 +278,9 @@ func (self *Server) HandleLocal(lLocal net.Listener) {
 				}
 			default:
 				connLocal.Write([]byte("Invalid message. Need dep_check\n"))
+
 		}
+		
 	}
 
 }

@@ -68,6 +68,7 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 				self.openedServerConns[serverID] = serverConn
 			}
 
+
 		
 			nearestStr := ""
 
@@ -76,6 +77,7 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 			}
 
 			msgToServer := "put " + key + " " + value + " " + putID + " " + strings.TrimSpace(nearestStr) +"\n"
+
 
 			fmt.Fprintf(self.openedServerConns[serverID], msgToServer)
 			//TODO: need to wait ack from server
