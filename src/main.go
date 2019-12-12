@@ -35,8 +35,12 @@ func main() {
 		did := IntId / 1000
 		//	fmt.Println("MASTER FACING PORT")
 		//	fmt.Println(port)
+		connLocalServers := make(map[int]net.Conn)
+		localServerReaders := make(map[int]*bufio.Reader)
+		msgQueue := make([]string, 0)
 		server := Server{sid: IntId, did: did, masterFacingPort: port, clientFacingPort: clientFacingPort,
-			numPartitions: numPartitions, kvStore: make(map[string][]string), peerDids: peerDids}
+			numPartitions: numPartitions, kvStore: make(map[string][]string), peerDids: peerDids,
+			connLocalServers: connLocalServers, localServerReaders: localServerReaders, msgQueue: msgQueue}
 
 		server.Run()
 	} else if processType == "client" {

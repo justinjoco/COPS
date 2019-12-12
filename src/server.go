@@ -15,14 +15,14 @@ type Server struct {
 	clientFacingPort string
 	masterFacingPort string
 	numPartitions    int
-	lClock           int
+	contextID        int
 	kvStore          map[string][]string //map from key to a slice of values,
 	//0th element in the slice is version 1
 	latestMsgID        int //starts from 0, i.e if we receive something with 2 first, then wait until received 1, then commit both
 	connLocalServers   map[int]net.Conn
 	localServerReaders map[int]*bufio.Reader
 	noDependency       string //"true" if no dependency issues, "false" otherwise. i.e. if this server is "blocking" then false
-	msgQueue           [][]string
+	msgQueue           []string
 }
 
 func (self *Server) Run() {
@@ -33,20 +33,22 @@ func (self *Server) Run() {
 		fmt.Println("Error listening to master!")
 	}
 
-	connMaster, errMC := lMaster.Accept()
-	if errMC != nil {
-		fmt.Println("Error while accepting connection")
-	}
-
-	go self.ListenMaster(connMaster)
-
-	localFacingPort := strconv.Itoa(25000 + self.sid%1000 + self.did)
+	localFacingPort := strconv.Itoa(25000 + self.sid%1000 + 100*self.did)
+	fmt.Println("MY LISTENING PORT")
+	fmt.Println(localFacingPort)
 	lLocal, errL := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+localFacingPort)
 	if errL != nil {
 		fmt.Println("Error while listening to local connection")
 		fmt.Println(errL)
 	}
 	go self.HandleLocal(lLocal)
+
+	connMaster, errMC := lMaster.Accept()
+	if errMC != nil {
+		fmt.Println("Error while accepting connection")
+	}
+
+	go self.ListenMaster(connMaster)
 
 	lClient, errC := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+self.clientFacingPort)
 	if errC != nil {
@@ -62,38 +64,37 @@ func (self *Server) Run() {
 
 }
 
-func (self *Server) DepCheck(receivedLC int) bool {
-	// return a bool, if True, then no dependency, can continue
-	if receivedLC > self.lClock+1 {
-		return false
-	} else {
-		myIdx := self.sid % 1000 //the index of this server
-		for i := 0; i < self.numPartitions; i++ {
-			if i != myIdx { // for all the other servers in this datacenter
-				if _, ok := self.connLocalServers[i]; !ok {
-					otherServerPort := strconv.Itoa(25000 + i + self.did) // some math  here
-					connLocal, err := net.Dial(CONNECT_TYPE, CONNECT_HOST+":"+otherServerPort)
-					if err != nil {
-						fmt.Println("errro connection to local server")
-					}
-					self.connLocalServers[i] = connLocal
-				}
-				otherServerConn := self.connLocalServers[i]
-				otherServerConn.Write([]byte("dep_check\n"))
-				// wait for dep respionse from other server
-				if _, ok := self.localServerReaders[i]; !ok {
-					reader := bufio.NewReader(otherServerConn)
-					self.localServerReaders[i] = reader
-				}
-				localReader := self.localServerReaders[i]
-				otherServerReply, _ := localReader.ReadString('\n')
-				otherServerReply = strings.TrimSuffix(otherServerReply, "\n") // string of true or false
-				if otherServerReply == "false" {
-					return false
-				}
+func (self *Server) broadcastContext() {
+	// myIdx := self.sid % 1000 //the index of this server
+	for i := 0; i < self.numPartitions; i++ {
+		// if i != myIdx { // for all the other servers in this datacenter
+		if _, ok := self.connLocalServers[i]; !ok {
+			otherServerPort := strconv.Itoa(25000 + i + 100*self.did) // some math  here
+			fmt.Println("OTHER SERVER PORT")
+			fmt.Println(otherServerPort)
+			connLocal, err := net.Dial(CONNECT_TYPE, CONNECT_HOST+":"+otherServerPort)
+			if err != nil {
+				fmt.Println("errro connection to local server")
 			}
+			self.connLocalServers[i] = connLocal
 		}
-		return true
+		otherServerConn := self.connLocalServers[i]
+		fmt.Println("SEDNING OVER NOW")
+		fmt.Println(self.contextID)
+		otherServerConn.Write([]byte(strconv.Itoa(self.contextID) + "\n"))
+		// wait for dep respionse from other server
+		// if _, ok := self.localServerReaders[i]; !ok {
+		// 	reader := bufio.NewReader(otherServerConn)
+		// 	self.localServerReaders[i] = reader
+		// }
+		// localReader := self.localServerReaders[i]
+		// otherServerReply, _ := localReader.ReadString('\n')
+		// otherServerReply = strings.TrimSuffix(otherServerReply, "\n") // string of true or false
+		// if otherServerReply == "false" {
+		// 	fmt.Println("DEP CHECK RETURNING FALSE")
+		// 	return false
+		// }
+
 	}
 }
 
@@ -111,37 +112,33 @@ func (self *Server) ListenMaster(connMaster net.Conn) {
 
 		receivedKey := messageSlice[0]
 		receivedValue := messageSlice[1]
-		receivedLC, _ := strconv.Atoi(messageSlice[2])
-		if receivedLC > self.lClock+1 || len(self.msgQueue) > 0 {
+		receivedPutId, _ := strconv.Atoi(messageSlice[2])
+		fmt.Println("MY CONTEXT ID WHEN RECEUVED REPLICATE FROM MASYET")
+		fmt.Println(self.contextID)
+		if receivedPutId > self.contextID+1 {
 			self.noDependency = "false" // This is purely local dependency, not considering the other servers
 		} else {
 			self.noDependency = "true"
 		}
 		//check for dependency first
-		if self.DepCheck(receivedLC) {
+		if self.noDependency == "true" {
 			if _, ok := self.kvStore[receivedKey]; !ok {
 				self.kvStore[receivedKey] = []string{receivedValue}
 			} else {
 				self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue)
 			}
-			self.lClock += 1
-			// then clear the rest of the messages held in queue
-			for _, msgTuple := range self.msgQueue { //TODO: might want to make it more robust by doing multiple rounds of this? (potentially recursive)
-				msgKey := msgTuple[0]
-				msgValue := msgTuple[1]
-				msgLC, _ := strconv.Atoi(msgTuple[2])
-				if self.DepCheck(msgLC) {
-					if _, ok := self.kvStore[msgKey]; !ok {
-						self.kvStore[msgKey] = []string{msgValue}
-					} else {
-						self.kvStore[msgKey] = append(self.kvStore[msgKey], msgValue)
-					}
-					self.lClock += 1
-				}
-			}
+			self.contextID = receivedPutId
+			fmt.Println("BRoadcasting my contextID, which is ")
+			fmt.Println(self.contextID)
+			// broadcast contextID to the other servers locally
+			self.broadcastContext()
 
 		} else { // add this message to the queue
-			self.msgQueue = append(self.msgQueue, messageSlice)
+			fmt.Println("IN THE ELSE BRNACH, ADDING TO MSGQ")
+			fmt.Println(message)
+			fmt.Println(self.contextID)
+			self.msgQueue = append(self.msgQueue, message)
+			fmt.Println(self.msgQueue)
 		}
 
 	}
@@ -167,10 +164,11 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 			} else {
 				self.kvStore[key] = append(self.kvStore[key], value)
 			}
-			self.lClock += 1
-
+			self.contextID, _ = strconv.Atoi(putID)
+			self.broadcastContext()
 			msgToMaster := ""
 			destIds := make([]string, 0)
+
 			for _, otherDid := range self.peerDids {
 
 				if otherDid == self.did {
@@ -180,7 +178,7 @@ func (self *Server) HandleClient(connClient net.Conn, connMaster net.Conn) {
 				destID := strconv.Itoa(otherDid*1000 + self.sid%1000)
 				destIds = append(destIds, destID)
 
-				msg := key + "," + value + "," + strconv.Itoa(self.lClock)
+				msg := key + "," + value + "," + putID
 				msgToMaster = "route " + strconv.Itoa(self.sid) + " " + destID + " " + putID + " " + msg
 				msgLength := strconv.Itoa(len(msgToMaster))
 				msgToMaster = msgLength + "-" + msgToMaster
@@ -222,12 +220,33 @@ func (self *Server) HandleLocal(lLocal net.Listener) {
 	for {
 		message, _ := reader.ReadString('\n')
 		message = strings.TrimSuffix(message, "\n")
-		if message == "dep_check" { //carry out local dep check
-			connLocal.Write([]byte(self.noDependency + "\n"))
-		} else {
-			fmt.Println("invalid message received from the other local server")
-			continue
+		newContextID, _ := strconv.Atoi(message)
+		fmt.Println("MESSAGE FROM OTHER LOCAL")
+		fmt.Println(message)
+		self.contextID = newContextID
+		// check q and see if can add the next message
+		fmt.Println("MY MESSAGE Q")
+		fmt.Println(self.msgQueue)
+		for _, msgStr := range self.msgQueue { //TODO: might want to make it more robust by doing multiple rounds of this? (potentially recursive)
+			msgTuple := strings.Split(msgStr, ",")
+			msgKey := msgTuple[0]
+			msgValue := msgTuple[1]
+			msgLC, _ := strconv.Atoi(msgTuple[2])
+			// if self.contextID+1 == msgLC {
+			if _, ok := self.kvStore[msgKey]; !ok {
+				self.kvStore[msgKey] = []string{msgValue}
+			} else {
+				self.kvStore[msgKey] = append(self.kvStore[msgKey], msgValue)
+			}
+			self.contextID = msgLC
+			self.broadcastContext()
+			// }
 		}
+		// if message == "dep_check" { //carry out local dep check
+		// connLocal.Write([]byte(self.noDependency + "\n"))
+		// } else {
+		// 	fmt.Println("invalid message received from the other local server")
+		// }
 	}
 
 }

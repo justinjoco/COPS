@@ -67,7 +67,6 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 				self.openedServerConns[serverID] = serverConn
 			}
 			msgToServer := "put " + key + " " + value + " " + putID + "\n"
-
 			fmt.Fprintf(self.openedServerConns[serverID], msgToServer)
 			//TODO: need to wait ack from server
 			if _, ok := self.readers[serverID]; !ok {
