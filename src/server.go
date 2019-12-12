@@ -107,7 +107,7 @@ func (self *Server) ListenMaster(lMaster net.Listener) {
 		for _, depStr := range receivedNearest{
 			dep := strings.Split(depStr, ":")
 			if len(dep) < 2{
-				break
+				continue
 			}
 			depKey, _ := strconv.Atoi(dep[0])
 			depVersion := dep[1]
@@ -156,30 +156,34 @@ func (self *Server) ListenMaster(lMaster net.Listener) {
 		
 		lock.Lock()	
 		
-		if receivedVersion != currentVersion {
+		if receivedVersion >= currentVersion {
 
 
 
 			if _, ok := self.kvStore[receivedKey]; !ok {
-				self.kvStore[receivedKey] = []string{receivedValue}
+				self.kvStore[receivedKey] = []string{receivedValue+","+senderDid}
 			} else {
 
-				self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue)
+				self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue+","+senderDid)
 				
 			}
 		} else {
 
 			fmt.Println("ELSE STATEMENT: HANDLING SELF")
 					
-			if senderDidInt >= self.did {
+			
 				if _, ok := self.kvStore[receivedKey]; !ok {
-					self.kvStore[receivedKey] = []string{receivedValue}
+					self.kvStore[receivedKey] = []string{receivedValue+","+senderDid}
 				} else {
+					valDidSlice := strings.Split(self.kvStore[receivedKey][len(self.kvStore[receivedKey])-1], ",")
+					did, _ := strconv.Atoi(valDidSlice[1])
+					if senderDidInt >= did {
 
-					self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue)
+					self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue+","+senderDid)
 					
 				}
 			}
+			
 				
 		}
 		lock.Unlock()
@@ -216,6 +220,9 @@ func (self *Server) HandleClient(lClient net.Listener) {
 			fmt.Println(nearest)
 			nearestStr := strings.Join(nearest, ",")
 			version := 0
+
+			didStr := strconv.Itoa(self.did) 
+			value += ","+didStr
 			lock.Lock()	
 			if _, ok := self.kvStore[key]; !ok {
 				self.kvStore[key] = []string{value}
@@ -271,8 +278,11 @@ func (self *Server) HandleClient(lClient net.Listener) {
 			retrievedValue = self.kvStore[key][len(self.kvStore[key])-1]
 			retVersion = strconv.Itoa(len(self.kvStore[key]))
 			lock.RUnlock()
+			retValueSlice := strings.Split(retrievedValue, ",")
+			retValue := retValueSlice[0]
 
-			retMsg := retrievedValue + " " + retVersion + "\n"
+
+			retMsg := retValue + " " + retVersion + "\n"
 			connClient.Write([]byte(retMsg))
 		}
 	}
