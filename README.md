@@ -12,7 +12,7 @@ Slip days used(total):
 * Zhilong Li (zl252): 2
 
 ## General Overview
-COPS is a distributed data store that shards keys amongst replicated partitions in multiple clusters (datacenters). This data store maintains the properties of ALPS (Availability, low Latency, Partition-tolerance, high Scalability)datastores whilst maintaining causal+ consistency.
+COPS is a distributed data store that shards keys amongst replicated partitions in multiple clusters (datacenters). This data store maintains the properties of ALPS (Availability, low Latency, Partition-tolerance, high Scalability) datastores whilst maintaining causal+ consistency. Our implementation follows descriptions and specifications in "Don’t Settle for Eventual: Scalable Causal Consistency for Wide-Area Storage with COPS" by Wyatt Lloyd, Michael J. Freedman, Michael Kaminsky, and David G. Andersen.
 
 Causal+ consistency is defined as causal consistency with convergent conflict handling, which is more powerful than eventually consistent stores. Such consistency is especially useful for applications that need stronger consistency properties, like bank accounts.
 
