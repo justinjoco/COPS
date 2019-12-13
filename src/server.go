@@ -1,3 +1,9 @@
+"""
+server.go
+Program for data store partition of COPS
+"""
+
+
 package main
 
 import (
@@ -17,14 +23,9 @@ type Server struct {
 	clientFacingPort string
 	masterFacingPort string
 	numPartitions    int
-	contextID        int
 	kvStore          map[string][]string //map from key to a slice of values,
-	//0th element in the slice is version 1
-	latestMsgID        int //starts from 0, i.e if we receive something with 2 first, then wait until received 1, then commit both
 	connLocalServers   map[int]net.Conn
-	localServerReaders map[int]*bufio.Reader
-	noDependency       string //"true" if no dependency issues, "false" otherwise. i.e. if this server is "blocking" then false
-	msgQueue           []string
+	localServerReaders map[int]*bufio.Reader	
 	connMaster         net.Conn
 }
 
@@ -40,9 +41,7 @@ func (self *Server) Run() {
 
 	go self.ListenMaster(lMaster)
 
-	localFacingPort := strconv.Itoa(25000 + self.sid%1000 + 100*self.did)
-
-	
+	localFacingPort := strconv.Itoa(25000 + self.sid%1000 + 100*self.did)	
 
 	lLocal, errL := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+localFacingPort)
 	if errL != nil {
@@ -57,8 +56,6 @@ func (self *Server) Run() {
 		fmt.Println("error listeining to client")
 	}
 
-
-
 	self.HandleClient(lClient)
 
 }
@@ -66,25 +63,18 @@ func (self *Server) Run() {
 
 
 func (self* Server) Replicate(message string){
-
-				
-	messageSlice := strings.Split(message, ",")
-
-	
+			
+	messageSlice := strings.Split(message, ",")	
 	receivedKey := messageSlice[0]
 	receivedValue := messageSlice[1]
 	senderDid := messageSlice[2]
 	receivedVersion, _ := strconv.Atoi(messageSlice[3])
-
-
 	senderDidInt, _ := strconv.Atoi(senderDid)
-
 	currentVersion := len(self.kvStore[receivedKey])
 
 	
 	if len(messageSlice) > 4 {
 		receivedNearest := messageSlice[4:]
-
 		resolved := false
 		
 		for !resolved{
@@ -95,12 +85,9 @@ func (self* Server) Replicate(message string){
 			for _, depStr := range receivedNearest{
 
 				
-				dep := strings.Split(depStr, ":")
-			
-				
+				dep := strings.Split(depStr, ":")		
 				depKey, _ := strconv.Atoi(dep[0])
 				depVersion := dep[1]
-
 				localId := depKey%self.numPartitions
 
 
@@ -146,15 +133,18 @@ func (self* Server) Replicate(message string){
 					reader := bufio.NewReader(otherServerConn)
 					self.localServerReaders[localId] = reader
 				}
+
 				localReader := self.localServerReaders[localId]
 				otherServerReply, _ := localReader.ReadString('\n')
 				otherServerReply = strings.TrimSuffix(otherServerReply, "\n") // string of true or false
 				otherServerReplySlice := strings.Split(otherServerReply, " ")
 				
 				if otherServerReplySlice[0] == "resolved"{
+
 					if otherServerReplySlice[1] == dep[0] && otherServerReplySlice[2] == dep[1] {
 						numResolved +=1
 					}
+
 				} else {
 					break
 				}
@@ -168,12 +158,10 @@ func (self* Server) Replicate(message string){
 
 		}
 
-
 	}
 
 	lock.Lock()	
 	if receivedVersion > currentVersion {
-
 
 		if _, ok := self.kvStore[receivedKey]; !ok {
 			self.kvStore[receivedKey] = []string{receivedValue + "," + senderDid}
@@ -184,7 +172,6 @@ func (self* Server) Replicate(message string){
 		}
 		
 	} else {
-
 		
 		if _, ok := self.kvStore[receivedKey]; !ok {
 			self.kvStore[receivedKey] = []string{receivedValue + "," + senderDid}
@@ -215,6 +202,7 @@ func (self *Server) ListenMaster(lMaster net.Listener) {
 	}
 	self.connMaster = connMaster
 	reader := bufio.NewReader(connMaster)	
+
 	for {
 		message, _ := reader.ReadString('\n')
 		message = strings.TrimSuffix(message, "\n")
@@ -252,6 +240,7 @@ func (self *Server) HandleClient(lClient net.Listener) {
 			
 				didStr := strconv.Itoa(self.did)
 				value += "," + didStr
+
 				lock.Lock()
 				if _, ok := self.kvStore[key]; !ok {
 					self.kvStore[key] = []string{value}
@@ -315,7 +304,6 @@ func (self *Server) HandleClient(lClient net.Listener) {
 func (self *Server) HandleLocal(lLocal net.Listener) {
 	defer lLocal.Close()
 
-
 	connLocal, errL := lLocal.Accept()
 	if errL != nil {
 		fmt.Println("error accepting local connection")
@@ -323,11 +311,10 @@ func (self *Server) HandleLocal(lLocal net.Listener) {
 
 	reader := bufio.NewReader(connLocal)
 	for {
+
 		message, _ := reader.ReadString('\n')
 		message = strings.TrimSuffix(message, "\n")
-
 		messageSlice := strings.Split(message, " ")
-
 		command := messageSlice[0]
 
 		switch command{
