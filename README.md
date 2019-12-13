@@ -12,7 +12,12 @@ Slip days used(total):
 * Zhilong Li (zl252): 2
 
 ## General Overview
-TBA
+COPS is a distributed data store that shards keys amongst replicated partitions in multiple clusters (datacenters). This data store maintains the properties of ALPS (Availability, low Latency, Partition-tolerance, high Scalability)datastores whilst maintaining causal+ consistency.
+
+Causal+ consistency is defined as causal consistency with convergent conflict handling, which is more powerful than eventually consistent stores. Such consistency is especially useful for applications that need stronger consistency properties, like bank accounts.
+
+The COPS data store comprises of two main entities: the data store and the client library. For fault tolerance, keys in this system are sharded amongst partitions in a particular cluster, and these keys are replicated corresponding partitions in all other clusters. For puts, the client library calculates to which a key is to be sent to, calculates the nearest dependencies for a given put operation, then sends the key,value pair to the appropriate partition in its local cluster. For gets, the client library asks the appropriate partition for the key,value pair, then sends it back to the requester.
+
 
 
 ### Automated testing 
@@ -24,10 +29,10 @@ Assume that you are in the root directory of this project using a terminal:
 * To build, run `./build` in order to create a binary Go file, which will be created in a /bin/ folder.
 
 For each worker process you want to run, open a new window and go to this project directory and do the following:
-* Run the Go program by running `./process <id> <n> <portNum>`, which runs the executable file in the /bin/ folder from earlier.
+* Run a client process by running `./process client <id> <did> <s> <portNum>`, which runs the executable file in the /bin/ folder from earlier. To run a server process, run `./process server <id> <n> <s> <portNum>`. 
 * Use 'CTRL C' to end this specific process.
 
-To stop all Go processes from running and destroy the DT logs, run `./stopall`.
+To stop all Go processes from running, run `./stopall`.
 
 Use master.py to send your commands directly to the distributed processes.
 
