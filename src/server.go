@@ -67,98 +67,105 @@ func (self *Server) Run() {
 func (self* Server) Replicate(message string){
 
 		
-		fmt.Println(self.sid)
-		fmt.Println("MESSAGE FROM MASTER TO REPLICATE")
+		
+		
+		
 		
 		messageSlice := strings.Split(message, ",")
 		fmt.Println(messageSlice)
+
+
 		receivedKey := messageSlice[0]
 		receivedValue := messageSlice[1]
 		senderDid := messageSlice[2]
 		receivedVersion, _ := strconv.Atoi(messageSlice[3])
-		receivedNearest := messageSlice[4:]
 
 		senderDidInt, _ := strconv.Atoi(senderDid)
 
 		currentVersion := len(self.kvStore[receivedKey])
-
 		
-		resolved := false
-		for !resolved{
-			numResolved := 0
-			numNearest  := len(receivedNearest)
+		if len(messageSlice) > 4 {
+			receivedNearest := messageSlice[4:]
 
-			fmt.Println("RECEIVED NEAREST")
-			fmt.Println(receivedNearest)
-			for _, depStr := range receivedNearest{
 
+			
+	
+			resolved := false
+
+			
+			for !resolved{
+				numResolved := 0
+				numNearest  := len(receivedNearest)
+
+			//	fmt.Println("NUM NEAREST")
+			//	fmt.Println(len(receivedNearest))
+
+
+
+				for _, depStr := range receivedNearest{
+
+					
+
+					dep := strings.Split(depStr, ":")
 				
-
-				dep := strings.Split(depStr, ":")
-				if len(dep) < 2{
-					numNearest -= 1
-					continue
-				}
-				depKey, _ := strconv.Atoi(dep[0])
-				depVersion := dep[1]
-
-				//depVersionInt, _ := strconv.Atoi(dep[1])
-				localId := depKey%self.numPartitions
-				fmt.Println("DEP KEY, DEP VERSION, CURRENT VERSION")
-				fmt.Println(depKey)
-				fmt.Println(depVersion)
-				fmt.Println(currentVersion)
-
 				
-				if _, ok := self.connLocalServers[localId]; !ok {
-					otherServerPort := strconv.Itoa(25000 + localId + 100*self.did) // some math  here
-					connLocal, err := net.Dial(CONNECT_TYPE, CONNECT_HOST+":"+otherServerPort)
-					if err != nil {
-						fmt.Println("errro connection to local server")
+					depKey, _ := strconv.Atoi(dep[0])
+					depVersion := dep[1]
+
+					//depVersionInt, _ := strconv.Atoi(dep[1])
+					localId := depKey%self.numPartitions
+					
+					if _, ok := self.connLocalServers[localId]; !ok {
+						otherServerPort := strconv.Itoa(25000 + localId + 100*self.did) // some math  here
+						connLocal, err := net.Dial(CONNECT_TYPE, CONNECT_HOST+":"+otherServerPort)
+						if err != nil {
+							fmt.Println("errro connection to local server")
+						}
+						self.connLocalServers[localId] = connLocal
+
 					}
-					self.connLocalServers[localId] = connLocal
 
+					msgToLocal := "dep_check " + dep[0] + " " + depVersion + "\n"
+					
+					otherServerConn := self.connLocalServers[localId]
+
+
+					otherServerConn.Write([]byte(msgToLocal))
+					// wait for dep respionse from other server
+					if _, ok := self.localServerReaders[localId]; !ok {
+						reader := bufio.NewReader(otherServerConn)
+						self.localServerReaders[localId] = reader
+					}
+					localReader := self.localServerReaders[localId]
+					otherServerReply, _ := localReader.ReadString('\n')
+					otherServerReply = strings.TrimSuffix(otherServerReply, "\n") // string of true or false
+				//	fmt.Println(otherServerReply)
+					otherServerReplySlice := strings.Split(otherServerReply, " ")
+					if otherServerReplySlice[0] == "resolved"{
+						if otherServerReplySlice[1] == dep[0] && otherServerReplySlice[2] == dep[1] {
+							numResolved +=1
+						}
+						
+					} 
+				}
+					
+				if numResolved == numNearest{
+					resolved = true
+				} else {
+					time.Sleep(100 * time.Millisecond)
 				}
 
-				msgToLocal := "dep_check " + dep[0] + " " + depVersion + "\n"
-				
-				otherServerConn := self.connLocalServers[localId]
-
-
-				otherServerConn.Write([]byte(msgToLocal))
-				// wait for dep respionse from other server
-				if _, ok := self.localServerReaders[localId]; !ok {
-					reader := bufio.NewReader(otherServerConn)
-					self.localServerReaders[localId] = reader
-				}
-				localReader := self.localServerReaders[localId]
-				otherServerReply, _ := localReader.ReadString('\n')
-				otherServerReply = strings.TrimSuffix(otherServerReply, "\n") // string of true or false
-				fmt.Println(otherServerReply)
-
-				if otherServerReply == "resolved"{
-					numResolved +=1
-				} 
 			}
-				
-			if numResolved == numNearest{
-				resolved = true
-			} else {
-				time.Sleep(100 * time.Millisecond)
-			}
+
 
 		}
-
-
-		fmt.Println("MY DID")
-		fmt.Println(self.did)
-
-		fmt.Println("SENDER DID")
-		fmt.Println(senderDid)
-
-		
 		lock.Lock()	
-		
+		/*
+		fmt.Println("RECEIVED VERSION")
+		fmt.Println(receivedVersion)
+
+		fmt.Println("MY VERSION")
+		fmt.Println(currentVersion)*/
 		if receivedVersion > currentVersion {
 
 
@@ -172,7 +179,7 @@ func (self* Server) Replicate(message string){
 			
 		} else {
 
-			fmt.Println("ELSE STATEMENT: HANDLING SELF")
+			
 
 			if _, ok := self.kvStore[receivedKey]; !ok {
 				self.kvStore[receivedKey] = []string{receivedValue + "," + senderDid}
@@ -181,7 +188,6 @@ func (self* Server) Replicate(message string){
 				valDidSlice := strings.Split(self.kvStore[receivedKey][len(self.kvStore[receivedKey])-1], ",")
 				did, _ := strconv.Atoi(valDidSlice[1])
 				if senderDidInt >= did {
-
 					self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue+","+senderDid)
 				
 				}
@@ -189,6 +195,7 @@ func (self* Server) Replicate(message string){
 
 		}
 		lock.Unlock()
+
 
 		fmt.Println("KV STORE AFTER REPLICATE")
 		fmt.Println(self.kvStore)
@@ -215,11 +222,9 @@ func (self *Server) ListenMaster(lMaster net.Listener) {
 		message, _ := reader.ReadString('\n')
 		message = strings.TrimSuffix(message, "\n")
 		
-		self.Replicate(message)
-
+		go self.Replicate(message)
 
 	}
-
 
 }
 
@@ -246,11 +251,12 @@ func (self *Server) HandleClient(lClient net.Listener) {
 			putID := messageSlice[3]
 			nearest := messageSlice[4:]
 
-			fmt.Println("NEAREST")
-			fmt.Println(nearest)
+			
 			nearestStr := strings.Join(nearest, ",")
 			version := 0
 
+			fmt.Println("NEAREST STR LENGTH")
+			fmt.Println(len(nearestStr))
 			didStr := strconv.Itoa(self.did)
 			value += "," + didStr
 			lock.Lock()
@@ -261,10 +267,13 @@ func (self *Server) HandleClient(lClient net.Listener) {
 			}
 			version = len(self.kvStore[key])
 			lock.Unlock()
-			//	self.lClock += 1
 
 			msgToMaster := ""
 			destIds := make([]string, 0)
+
+			if len(nearestStr) > 0{
+				nearestStr = "," + nearestStr
+			}
 
 			for _, otherDid := range self.peerDids {
 
@@ -274,11 +283,7 @@ func (self *Server) HandleClient(lClient net.Listener) {
 
 				destID := strconv.Itoa(otherDid*1000 + self.sid%1000)
 				destIds = append(destIds, destID)
-
-
-				msg := key + "," + value  + "," + strconv.Itoa(version)+ "," + nearestStr 
-
-
+				msg := key + "," + value  + "," + strconv.Itoa(version) + nearestStr 
 
 				msgToMaster = "route " + strconv.Itoa(self.sid) + " " + destID + " " + putID + " " + msg
 				msgLength := strconv.Itoa(len(msgToMaster))
@@ -289,8 +294,7 @@ func (self *Server) HandleClient(lClient net.Listener) {
 
 			latestVersion := strconv.Itoa(len(self.kvStore[key])) + "\n"
 
-			fmt.Println("KV STORE")
-			fmt.Println(self.kvStore)
+
 
 			connClient.Write([]byte(latestVersion))
 
@@ -300,13 +304,14 @@ func (self *Server) HandleClient(lClient net.Listener) {
 			//version, _ := strconv.Atoi(messageSlice[2])
 			retVersion := ""
 			retrievedValue := ""
-			fmt.Println("KV STORE ")
+			
 
 			lock.RLock()
 			fmt.Println(self.kvStore)
 			retrievedValue = self.kvStore[key][len(self.kvStore[key])-1]
 			retVersion = strconv.Itoa(len(self.kvStore[key]))
 			lock.RUnlock()
+
 			retValueSlice := strings.Split(retrievedValue, ",")
 			retValue := retValueSlice[0]
 
@@ -325,6 +330,7 @@ func (self *Server) HandleLocal(lLocal net.Listener) {
 	if errL != nil {
 		fmt.Println("error accepting local connection")
 	}
+
 	reader := bufio.NewReader(connLocal)
 	for {
 		message, _ := reader.ReadString('\n')
@@ -338,28 +344,28 @@ func (self *Server) HandleLocal(lLocal net.Listener) {
 			case "dep_check":
 				keyDep := messageSlice[1]
 				versionDep, _ := strconv.Atoi(messageSlice[2])
-			//	for {
-					lock.RLock()
-					versionNum :=len(self.kvStore[keyDep])
-					_, ok := self.kvStore[keyDep]
-    				lock.RUnlock()
+		
+				lock.RLock()
+				versionNum :=len(self.kvStore[keyDep])
+				_, ok := self.kvStore[keyDep]
 
-					if !ok {
-						fmt.Println("NOT OK")
-						connLocal.Write([]byte("failed\n"))
-						continue
-					} else if versionNum  == versionDep {
+				lock.RUnlock()
 
-						connLocal.Write([]byte("resolved\n"))
-						break
-					} else{
-						fmt.Println("OK BUT FAILED")
-						connLocal.Write([]byte("failed\n"))
-						continue
-					}
-			//		time.Sleep(100 * time.Millisecond)
-			//	}
-			
+				if !ok {
+					fmt.Println("NOT OK")
+					connLocal.Write([]byte("failed\n"))
+					
+				} else if versionNum  == versionDep {
+					retStr := "resolved " + keyDep + " " + messageSlice[2] +"\n"
+					
+					connLocal.Write([]byte(retStr))
+					
+				} else{
+					fmt.Println("OK BUT FAILED")
+					connLocal.Write([]byte("failed\n"))
+					
+				}
+
 
 		default:
 			connLocal.Write([]byte("Invalid message. Need dep_check\n"))

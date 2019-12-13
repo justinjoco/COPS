@@ -1,8 +1,0 @@
-2 song2
-3 song3
-3 song3
-Traceback (most recent call last):
-  File "./master.py", line 72, in run
-    data = self.sock.recv(1024)
-error: [Errno 54] Connection reset by peer
-
