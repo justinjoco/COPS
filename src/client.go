@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sort"
 )
 
 type Client struct {
@@ -18,7 +19,8 @@ type Client struct {
 	numPartitions int
 	keyVersionMap map[string]string
 	readers       map[int]*bufio.Reader
-	nearest			map[string]string
+	nearest			map[int]string
+
 }
 
 func (self *Client) Run() {
@@ -71,11 +73,17 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 
 		
 			nearestStr := ""
+			keys := make([]int,0)
+			for nearKey, _ := range self.nearest{
+				keys = append(keys, nearKey)
+			}
+			sort.Ints(keys)
 
-			for nearKey, nearVersion := range self.nearest{
-				nearestStr += nearKey + ":" + nearVersion + " "
+			for _, key := range keys{
+				nearestStr += strconv.Itoa(key) + ":" + self.nearest[key] + " "
 			}
 
+			
 			msgToServer := "put " + key + " " + value + " " + putID + " " + strings.TrimSpace(nearestStr) +"\n"
 
 
@@ -86,10 +94,11 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 			}
 			versionStr, _ := self.readers[serverID].ReadString('\n')
 			versionStr = strings.TrimSuffix(versionStr, "\n")
-			self.nearest = make(map[string]string)
+			self.nearest = make(map[int]string)
 
 			self.keyVersionMap[key] = versionStr
-			self.nearest[key] = versionStr
+			keyInt, _ := strconv.Atoi(key)
+			self.nearest[keyInt] = versionStr
 
 			retMsg := "putResult success"
 			msgLength := len(retMsg)
@@ -131,7 +140,10 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 			version := serverMsgSlice[1]
 			// update key version map
 			self.keyVersionMap[key] = version
-			self.nearest[key] = version
+
+			keyInt, _ := strconv.Atoi(key)
+			self.nearest[keyInt] = version
+
 			retMsg := "getResult " + key + " " + value
 			msgLength := len(retMsg)
 			retMessage := strconv.Itoa(msgLength) + "-" + retMsg
