@@ -5,7 +5,6 @@ rm dr589_jaj263_zl242.tar
 mkdir -p dr589_jaj263_zl242
 cp -R src dr589_jaj263_zl242/
 cp -R tests dr589_jaj263_zl242/
-cp -R report dr589_jaj263_zl242/
 cp build dr589_jaj263_zl242/
 cp fullstopall dr589_jaj263_zl242/
 cp stopall dr589_jaj263_zl242/

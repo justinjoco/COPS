@@ -5,11 +5,11 @@ Slip days used(this project): 0
 
 Slip days used(total):
 
-* Dilip (dr589): 4
+* Dilip (dr589): 8
 
 * Justin (jaj263): 2
 
-* Zhilong Li (zl252): 2
+* Zhilong Li (zl242): 2
 
 ## General Overview
 COPS is a distributed data store that shards keys amongst replicated partitions in multiple clusters (datacenters). This data store maintains the properties of ALPS (Availability, low Latency, Partition-tolerance, high Scalability) datastores whilst maintaining causal+ consistency. Our implementation follows descriptions and specifications in "Don’t Settle for Eventual: Scalable Causal Consistency for Wide-Area Storage with COPS" by Wyatt Lloyd, Michael J. Freedman, Michael Kaminsky, and David G. Andersen.
