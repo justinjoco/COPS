@@ -26,6 +26,7 @@ type Client struct {
 
 }
 
+//Run client process; set up master facing port
 func (self *Client) Run() {
 
 	lMaster, error := net.Listen(CONNECT_TYPE, CONNECT_HOST+":"+self.masterFacingPort)
@@ -41,9 +42,9 @@ func (self *Client) Run() {
 	self.HandleMaster(connMaster)
 }
 
+//Handle master connections, which will be put and get requests
 func (self *Client) HandleMaster(connMaster net.Conn) {
 	
-
 	reader := bufio.NewReader(connMaster)
 	for {
 
@@ -52,6 +53,9 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 		messageSlice := strings.Split(message, " ")
 		command := messageSlice[0]
 
+		//Retrieve nearest dependencies; send nearest along with put request to partition
+		//Receive acknowledged put request; clear nearest dep and input it put request
+		//Acknowledge master that put was success
 		switch command {
 
 			case "put":
@@ -104,6 +108,9 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 
 				connMaster.Write([]byte(retMessage))
 
+			//Get value from partition based on key
+			//Add get request into nearest dep list
+			//Acknowledge requester with <key, value> pair
 			case "get":
 
 				key := messageSlice[1]
