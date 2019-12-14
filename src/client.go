@@ -17,8 +17,8 @@ type Client struct {
 	cid               int
 	did               int
 	masterFacingPort  string
-	serverFacingPort  string           //listens to a server
-	openedServerConns map[int]net.Conn // a map holding the connections to servers
+	serverFacingPort  string           
+	openedServerConns map[int]net.Conn 
 	numPartitions int
 	readers       map[int]*bufio.Reader
 	nearest			map[string]string

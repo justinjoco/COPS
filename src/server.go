@@ -16,12 +16,12 @@ import (
 
 type Server struct {
 	sid              int
-	did              int   // datacenter id
-	peerDids         []int // Shouldn't include own!
+	did              int   
+	peerDids         []int 
 	clientFacingPort string
 	masterFacingPort string
 	numPartitions    int
-	kvStore          map[string]string //map from key to a slice of values,
+	kvStore          map[string]string
 	connLocalServers   map[int]net.Conn
 	localServerReaders map[int]*bufio.Reader	
 	connMaster         net.Conn

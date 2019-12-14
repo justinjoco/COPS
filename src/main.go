@@ -19,7 +19,6 @@ const (
 func main() {
 
 	args := os.Args[1:6]
-	fmt.Println(os.Args)
 	processType := args[0]
 	IntId, _ := strconv.Atoi(args[1])
 	numPartitions, _ := strconv.Atoi(args[3])
@@ -32,7 +31,7 @@ func main() {
 		for i := 0; i < n; i++ {
 			peerDids[i] = i
 		}
-		fmt.Println(peerDids)
+		
 		
 		clientFacingPort := strconv.Itoa(20000 + IntId)
 		
