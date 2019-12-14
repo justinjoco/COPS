@@ -1,6 +1,3 @@
 #!/bin/bash
 
-#INSERT LAB SPECIFIC STOP IMPLEMENTATIONS HERE
-
-#Stops all Go processes
-./fullstopall
+ps aux | grep '[/]process' | awk '{print $2}' | xargs kill -SIGKILL

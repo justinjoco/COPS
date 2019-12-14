@@ -1,3 +1,0 @@
-#!/bin/bash
-
-ps aux | grep '[/]process' | awk '{print $2}' | xargs kill -SIGKILL
