@@ -20,7 +20,6 @@ type Client struct {
 	serverFacingPort  string           //listens to a server
 	openedServerConns map[int]net.Conn // a map holding the connections to servers
 	numPartitions int
-	keyVersionMap map[string]string
 	readers       map[int]*bufio.Reader
 	nearest			map[string]string
 
@@ -98,8 +97,6 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 				versionStr = strings.TrimSuffix(versionStr, "\n")
 				self.nearest = make(map[string]string)
 
-				self.keyVersionMap[key] = versionStr
-
 				self.nearest[key] = versionStr
 
 				retMsg := "putResult success"
@@ -141,9 +138,6 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 				serverMsgSlice := strings.Split(serverMsg, " ")
 				value := serverMsgSlice[0]
 				version := serverMsgSlice[1]
-				// update key version map
-				self.keyVersionMap[key] = version
-
 				
 				self.nearest[key] = version
 

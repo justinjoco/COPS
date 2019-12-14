@@ -21,16 +21,18 @@ type Server struct {
 	clientFacingPort string
 	masterFacingPort string
 	numPartitions    int
-	kvStore          map[string][]string //map from key to a slice of values,
+	kvStore          map[string]string //map from key to a slice of values,
 	connLocalServers   map[int]net.Conn
 	localServerReaders map[int]*bufio.Reader	
 	connMaster         net.Conn
+	keyClockMap      map[string][]int
 }
 
 //Prevent concurrent reads and writes to KV store and my saved TCP connections
 var kvLock = sync.RWMutex{}
 var connLocalLock = sync.RWMutex{}
 var readerLock = sync.RWMutex{}
+var clockLock = sync.RWMutex{}
 
 func (self *Server) Run() {
 
@@ -69,11 +71,16 @@ func (self* Server) Replicate(message string){
 	messageSlice := strings.Split(message, ",")	
 	receivedKey := messageSlice[0]
 	receivedValue := messageSlice[1]
-	senderDid := messageSlice[2]
+	senderDid, _ := strconv.Atoi(messageSlice[2])
 	receivedVersion, _ := strconv.Atoi(messageSlice[3])
-	senderDidInt, _ := strconv.Atoi(senderDid)
-	currentVersion := len(self.kvStore[receivedKey])
 
+	clock, ok := self.keyClockMap[receivedKey]
+	currentVersion := 0
+	currentDid := 0
+	if ok {
+		currentVersion = clock[0]
+		currentDid = clock[1]
+	} 
 
 	fmt.Println("MESSAGE TO REPLICATE")
 	fmt.Println(messageSlice)
@@ -116,12 +123,15 @@ func (self* Server) Replicate(message string){
 					keyDep := dep[0]
 					versionDep, _ := strconv.Atoi(dep[1])
 			
-					kvLock.RLock()
-					versionNum :=len(self.kvStore[keyDep])
-					_, ok := self.kvStore[keyDep]
-					kvLock.RUnlock()
+					clockLock.RLock()
+					versionNum := 0
+					clockDep, ok := self.keyClockMap[keyDep]
+					if ok {
+						versionNum = clockDep[0]
+					}
+					clockLock.RUnlock()
 
-					if versionNum  >= versionDep && ok {
+					if versionNum  >= versionDep {
 						numResolved +=1	
 					} 
 					continue
@@ -199,13 +209,10 @@ func (self* Server) Replicate(message string){
 	kvLock.Lock()	
 	if receivedVersion > currentVersion {
 
-		if _, ok := self.kvStore[receivedKey]; !ok {
-			self.kvStore[receivedKey] = []string{receivedValue + "," + senderDid}
-		} else {
 
-			self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue+","+senderDid)
-
-		}
+		self.kvStore[receivedKey] = receivedValue
+		self.keyClockMap[receivedKey] = []int{receivedVersion , senderDid}
+		
 		
 	} else {
 		
@@ -213,11 +220,10 @@ func (self* Server) Replicate(message string){
 		// Get the did of the latest version of the received key in my data store
 		// If the sender's did is greater than or equal to my latest version's did, commit the replication
 		if receivedVersion == currentVersion {
-			valDidSlice := strings.Split(self.kvStore[receivedKey][len(self.kvStore[receivedKey])-1], ",")
-			did, _ := strconv.Atoi(valDidSlice[1])
-			if senderDidInt >= did {
-				self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue+","+senderDid)
 			
+			if senderDid >= currentDid {
+				self.kvStore[receivedKey] = receivedValue
+				self.keyClockMap[receivedKey] = []int{receivedVersion + 1, senderDid}
 			}
 		}
 		//Ignore if received version is out of date with mine (ie. is less than my current version)
@@ -228,7 +234,7 @@ func (self* Server) Replicate(message string){
 
 	fmt.Println("KV STORE AFTER REPLICATE")
 	fmt.Println(self.kvStore)
-
+	fmt.Println(self.keyClockMap)
 
 	
 
@@ -281,22 +287,28 @@ func (self *Server) HandleClient(lClient net.Listener) {
 				nearest := messageSlice[4:]
 
 				nearestStr := strings.Join(nearest, ",")
-				version := 0
-
+			
 			
 				didStr := strconv.Itoa(self.did)
-				value += "," + didStr
+			
 
 				//Store key, value pair based on scheme: <key, value, did>
 				kvLock.Lock()
-				if _, ok := self.kvStore[key]; !ok {
-					self.kvStore[key] = []string{value}
-				} else {
-					self.kvStore[key] = append(self.kvStore[key], value)
-				}
-				version = len(self.kvStore[key])
-				kvLock.Unlock()
+				self.kvStore[key] = value
+				currentClock, ok := self.keyClockMap[key]
 
+				fmt.Println("OK OR NOT OK")
+				fmt.Println(ok)
+
+				if !ok {
+
+					self.keyClockMap[key] = []int{1, self.did}
+				}else{
+					self.keyClockMap[key] = []int{currentClock[0]+1, self.did}
+				}
+				kvLock.Unlock()
+				fmt.Println(self.keyClockMap[key][0])
+				version := self.keyClockMap[key][0]
 				msgToMaster := ""
 				destIds := make([]string, 0)
 
@@ -314,7 +326,7 @@ func (self *Server) HandleClient(lClient net.Listener) {
 
 					destID := strconv.Itoa(otherDid*1000 + self.sid%1000)
 					destIds = append(destIds, destID)
-					msg := key + "," + value  + "," + strconv.Itoa(version) + nearestStr 
+					msg := key + "," + value  + "," + didStr + "," + strconv.Itoa(version) + nearestStr 
 
 					msgToMaster = "route " + strconv.Itoa(self.sid) + " " + destID + " " + putID + " " + msg
 					msgLength := strconv.Itoa(len(msgToMaster))
@@ -324,7 +336,7 @@ func (self *Server) HandleClient(lClient net.Listener) {
 				}
 
 				//Acknowledge client with newly calculated version number (ie Lamport clock)of key 
-				latestVersion := strconv.Itoa(len(self.kvStore[key])) + "\n"
+				latestVersion := strconv.Itoa(version) + "\n"
 
 				connClient.Write([]byte(latestVersion))
 
@@ -339,15 +351,11 @@ func (self *Server) HandleClient(lClient net.Listener) {
 				
 
 				kvLock.RLock()
-				retrievedValue = self.kvStore[key][len(self.kvStore[key])-1]
-				retVersion = strconv.Itoa(len(self.kvStore[key]))
+				retrievedValue = self.kvStore[key]
+				retVersion = strconv.Itoa(self.keyClockMap[key][0])
 				kvLock.RUnlock()
-
-				retValueSlice := strings.Split(retrievedValue, ",")
-				retValue := retValueSlice[0]
-
 				
-				retMsg := retValue + " " + retVersion + "\n"
+				retMsg := retrievedValue + " " + retVersion + "\n"
 				connClient.Write([]byte(retMsg))
 		}
 	}
@@ -377,14 +385,13 @@ func (self *Server) HandleLocal(lLocal net.Listener) {
 				keyDep := messageSlice[1]
 				versionDep, _ := strconv.Atoi(messageSlice[2])
 		
-				kvLock.RLock()
-				versionNum :=len(self.kvStore[keyDep])
-				_, ok := self.kvStore[keyDep]
-				kvLock.RUnlock()
+				clockLock.RLock()
+				clock, ok := self.keyClockMap[keyDep]
+				clockLock.RUnlock()
 
 				//If current version number is up-to-date or ahead of dependency, acknowledge with "resolved"
 				//Otherwise, reply with "failed"
-				if ok && versionNum  >= versionDep {		
+				if ok && clock[0]  >= versionDep {		
 					retStr := "resolved " + keyDep + " " + messageSlice[2] +"\n"	
 					connLocal.Write([]byte(retStr))	
 				} else{
