@@ -52,6 +52,9 @@ func (self *Client) HandleMaster(connMaster net.Conn) {
 		messageSlice := strings.Split(message, " ")
 		command := messageSlice[0]
 
+		fmt.Println("MESSAGE FROM MASTER IN CLIENT")
+		fmt.Println(message)
+
 		//Retrieve nearest dependencies; send nearest along with put request to partition
 		//Receive acknowledged put request; clear nearest dep and input it put request
 		//Acknowledge master that put was success

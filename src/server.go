@@ -100,7 +100,8 @@ func (self* Server) Replicate(message string){
 		receivedNearest := messageSlice[4:]
 		resolved := false
 		
-
+		fmt.Println("NEAREST DEPENDENCIES")
+		fmt.Println(receivedNearest)
 		//Check if all dependencies are resolved
 		for !resolved{
 			numResolved := 0
@@ -223,7 +224,7 @@ func (self* Server) Replicate(message string){
 			
 			if senderDid >= currentDid {
 				self.kvStore[receivedKey] = receivedValue
-				self.keyClockMap[receivedKey] = []int{receivedVersion + 1, senderDid}
+				self.keyClockMap[receivedKey] = []int{receivedVersion , senderDid}
 			}
 		}
 		//Ignore if received version is out of date with mine (ie. is less than my current version)
