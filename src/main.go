@@ -1,3 +1,6 @@
+/*
+Main program that selects to run a server or client based on input args
+*/
 package main
 
 import (

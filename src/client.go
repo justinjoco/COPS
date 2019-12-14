@@ -1,7 +1,7 @@
-"""
+/*
 client.go
 Program for client library process of COPS
-"""
+*/
 
 package main
 

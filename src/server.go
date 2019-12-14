@@ -1,9 +1,7 @@
-"""
+/*
 server.go
 Program for data store partition of COPS
-"""
-
-
+*/
 package main
 
 import (
@@ -72,6 +70,18 @@ func (self* Server) Replicate(message string){
 	senderDidInt, _ := strconv.Atoi(senderDid)
 	currentVersion := len(self.kvStore[receivedKey])
 
+	fmt.Println("MESSAGE TO REPLICATE")
+	fmt.Println(messageSlice)
+
+	fmt.Println("RECEIVED KEY")
+	fmt.Println(receivedKey)
+
+	fmt.Println("RECEIVED VERSION")
+	fmt.Println(currentVersion)
+
+
+	fmt.Println("CURRENT VERSION")
+	fmt.Println(currentVersion)
 	
 	if len(messageSlice) > 4 {
 		receivedNearest := messageSlice[4:]
@@ -101,7 +111,7 @@ func (self* Server) Replicate(message string){
 					_, ok := self.kvStore[keyDep]
 					lock.RUnlock()
 
-					if versionNum  == versionDep && ok {
+					if versionNum  >= versionDep && ok {
 						numResolved +=1	
 					} 
 					continue
@@ -177,15 +187,21 @@ func (self* Server) Replicate(message string){
 			self.kvStore[receivedKey] = []string{receivedValue + "," + senderDid}
 	
 		} else {
-			valDidSlice := strings.Split(self.kvStore[receivedKey][len(self.kvStore[receivedKey])-1], ",")
-			did, _ := strconv.Atoi(valDidSlice[1])
-			if senderDidInt >= did {
-				self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue+","+senderDid)
-			
+			if receivedVersion == currentVersion {
+				valDidSlice := strings.Split(self.kvStore[receivedKey][len(self.kvStore[receivedKey])-1], ",")
+				did, _ := strconv.Atoi(valDidSlice[1])
+				if senderDidInt >= did {
+					self.kvStore[receivedKey] = append(self.kvStore[receivedKey], receivedValue+","+senderDid)
+				
+				}
 			}
 		}
 
 	}
+	fmt.Println("KV STORE AFTER REPLICATE")
+	fmt.Println(self.kvStore)
+
+
 	lock.Unlock()
 
 }
@@ -327,7 +343,7 @@ func (self *Server) HandleLocal(lLocal net.Listener) {
 				_, ok := self.kvStore[keyDep]
 				lock.RUnlock()
 
-				if ok && versionNum  == versionDep {		
+				if ok && versionNum  >= versionDep {		
 					retStr := "resolved " + keyDep + " " + messageSlice[2] +"\n"	
 					connLocal.Write([]byte(retStr))	
 				} else{
