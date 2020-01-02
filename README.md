@@ -16,7 +16,7 @@ COPS is a distributed data store that shards keys amongst replicated partitions 
 
 Causal+ consistency is defined as causal consistency with convergent conflict handling, which is more powerful than eventually consistent stores. Such consistency is especially useful for applications that need stronger consistency properties, like bank accounts.
 
-The COPS data store comprises of two main entities: the data store and the client library. For fault tolerance, keys in this system are sharded amongst partitions in a particular cluster, and these keys are replicated corresponding partitions in all other clusters. For puts, the client library calculates to which a key is to be sent to, calculates the nearest dependencies for a given put operation, then sends the key,value pair to the appropriate partition in its local cluster. For gets, the client library asks the appropriate partition for the key,value pair, then sends it back to the requester.
+The COPS data store comprises of two main entities: the data store and the client library. Keys are sharded amongst partitions in a particular cluster, and every key-value pair is replicated across all other clusters. For puts, the client library calculates to which a key is to be sent to, calculates the nearest dependencies for a given put operation, then sends the key,value pair to the appropriate partition in its local cluster. Afterwards, this partition tells its replicas in all other clusters to replicate the put operation. For gets, the client library asks the appropriate partition in its local datacenter for the key,value pair, then sends it back to the requester.
 
 
 
