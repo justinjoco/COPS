@@ -1,22 +1,12 @@
 # Clusters of Order-Preserving Servers (COPS) in Go
 Authors: Dilip Reddy (dr589), Justin Joco (jaj263), Zhilong Li (zl242)
 
-Slip days used(this project): 0  
-
-Slip days used(total):
-
-* Dilip (dr589): 8
-
-* Justin (jaj263): 2
-
-* Zhilong Li (zl242): 2
-
 ## General Overview
-COPS is a distributed data store that shards keys amongst replicated partitions in multiple clusters (datacenters). This data store maintains the properties of ALPS (Availability, low Latency, Partition-tolerance, high Scalability) datastores whilst maintaining causal+ consistency. Our implementation follows descriptions and specifications in "Don’t Settle for Eventual: Scalable Causal Consistency for Wide-Area Storage with COPS" by Wyatt Lloyd, Michael J. Freedman, Michael Kaminsky, and David G. Andersen.
+COPS is a distributed key value store that shards keys amongst replicated partitions in multiple clusters (datacenters) in an asynchronous setting. This data store maintains the properties of ALPS (Availability, low Latency, Partition-tolerance, high Scalability) datastores whilst maintaining causal+ consistency. Our implementation follows descriptions and specifications in "Don’t Settle for Eventual: Scalable Causal Consistency for Wide-Area Storage with COPS" by Wyatt Lloyd, Michael J. Freedman, Michael Kaminsky, and David G. Andersen.
 
 Causal+ consistency is defined as causal consistency with convergent conflict handling, which is more powerful than eventually consistent stores. Such consistency is especially useful for applications that need stronger consistency properties, like bank accounts.
 
-The COPS data store comprises of two main entities: the data store and the client library. Keys are sharded amongst partitions in a particular cluster, and every key-value pair is replicated across all other clusters. For puts, the client library calculates to which a key is to be sent to, calculates the nearest dependencies for a given put operation, then sends the key,value pair to the appropriate partition in its local cluster. Afterwards, this partition tells its replicas in all other clusters to replicate the put operation. For gets, the client library asks the appropriate partition in its local datacenter for the key,value pair, then sends it back to the requester.
+The COPS data store comprises of two main entities: the data store and the client library. Keys are sharded amongst partitions in a cluster, and every key-value pair is replicated across all other clusters. For puts, the client library calculates to which a key is to be sent to, calculates the nearest dependencies for a given put operation, then sends the key,value pair to the appropriate partition in its local cluster. Afterwards, this partition tells its replicas in all other clusters to replicate the put operation. For gets, the client library asks the appropriate partition in its local datacenter for the key,value pair, then sends it back to the requester.
 
 
 
