@@ -1,8 +1,8 @@
 # Clusters of Order-Preserving Servers (COPS) in Go
-Authors: Dilip Reddy (dr589), Justin Joco (jaj263), Zhilong Li (zl242)
+Author: Justin Joco (jaj263)
 
 ## General Overview
-COPS is a distributed key value store that shards keys amongst replicated partitions in multiple clusters (datacenters) in an asynchronous setting. This data store maintains the properties of ALPS (Availability, low Latency, Partition-tolerance, high Scalability) datastores whilst maintaining causal+ consistency. Our implementation follows descriptions and specifications in "Don’t Settle for Eventual: Scalable Causal Consistency for Wide-Area Storage with COPS" by Wyatt Lloyd, Michael J. Freedman, Michael Kaminsky, and David G. Andersen.
+COPS is a distributed key value store that shards keys amongst replicated partitions in multiple clusters (datacenters) in an asynchronous setting. This data store maintains the properties of ALPS (Availability, low Latency, Partition-tolerance, high Scalability) datastores whilst maintaining causal+ consistency. My implementation follows descriptions and specifications in "Don’t Settle for Eventual: Scalable Causal Consistency for Wide-Area Storage with COPS" by Wyatt Lloyd, Michael J. Freedman, Michael Kaminsky, and David G. Andersen.
 
 Causal+ consistency is defined as causal consistency with convergent conflict handling, which is more powerful than eventually consistent stores. Such consistency is especially useful for applications that need stronger consistency properties, like bank accounts.
 
@@ -27,7 +27,7 @@ To stop all Go processes from running, run `./stopall`.
 Use master.py to send your commands directly to the distributed processes.
 
 ### OS Testing Environment
-Our group used OSX Mojave 10.14.x and Ubuntu Linux to compile, run, and test this project.
+I used OSX Mojave 10.14.x and Ubuntu Linux to compile, run, and test this project.
 
 
 
